@@ -56,6 +56,7 @@ Open `http://localhost:3000`.
 ```bash
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 DATABASE_URL="postgresql://USER:PASSWORD@HOST.neon.tech/clientflow?sslmode=require"
+DIRECT_URL=""
 AUTH_SECRET="replace-with-a-long-random-secret"
 AUTH_URL="http://localhost:3000"
 DEMO_USER_EMAIL="demo@clientflow.app"
@@ -65,7 +66,7 @@ STRIPE_WEBHOOK_SECRET=""
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=""
 ```
 
-Stripe keys stay empty until the billing stage. The app will use Stripe test mode only.
+`DATABASE_URL` should use the pooled Neon URL for the running app. `DIRECT_URL` is optional and can use Neon's direct connection string for Prisma migrations when available. Stripe keys stay empty until the billing stage. The app will use Stripe test mode only.
 
 ## Scripts
 
@@ -74,9 +75,40 @@ npm run dev
 npm run build
 npm run start
 npm run lint
+npm run db:generate
+npm run db:migrate
+npm run db:deploy
+npm run db:seed
+npm run db:studio
 ```
 
-More scripts will be added as Prisma, seeding, Vitest, and Playwright are introduced.
+`db:migrate` is used during local development to create and apply migrations. `db:deploy` is used in deployment environments to apply existing migrations. `db:seed` creates the demo workspace, CRM records, and demo user.
+
+## Database Setup
+
+Generate Prisma Client:
+
+```bash
+npm run db:generate
+```
+
+Create and apply a migration:
+
+```bash
+npm run db:migrate
+```
+
+Seed the demo workspace:
+
+```bash
+npm run db:seed
+```
+
+Open Prisma Studio:
+
+```bash
+npm run db:studio
+```
 
 ## Development Roadmap
 
