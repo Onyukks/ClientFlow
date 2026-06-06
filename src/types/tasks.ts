@@ -7,6 +7,34 @@ export type TasksMetric = {
   value: string;
 };
 
+export type TaskClientOption = {
+  id: string;
+  name: string;
+};
+
+export type TaskDealOption = {
+  clientId: string;
+  id: string;
+  title: string;
+};
+
+export type TaskMemberOption = {
+  id: string;
+  name: string;
+};
+
+export type TaskEditValues = {
+  assigneeId: string;
+  clientId: string;
+  dealId: string;
+  description: string;
+  dueDate: string;
+  priority: string;
+  status: string;
+  taskId: string;
+  title: string;
+};
+
 export type TaskListItem = {
   clientId: string | null;
   clientName: string;
@@ -16,6 +44,7 @@ export type TaskListItem = {
   dueLabel: string;
   dueState: string;
   dueStateColor: string;
+  editValues: TaskEditValues;
   id: string;
   owner: string;
   priority: string;
@@ -40,6 +69,9 @@ export type TaskPriorityGroup = {
 };
 
 export type TasksData = {
+  clientOptions: TaskClientOption[];
+  dealOptions: TaskDealOption[];
+  memberOptions: TaskMemberOption[];
   metrics: TasksMetric[];
   priorityGroups: TaskPriorityGroup[];
   statusGroups: TaskStatusGroup[];

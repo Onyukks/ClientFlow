@@ -94,6 +94,8 @@ const formatDueLabel = (dueDate: Date | null) => {
   });
 };
 
+const formatDateInput = (date: Date | null) => date?.toISOString().slice(0, 10) ?? "";
+
 const getDueState = (dueDate: Date | null, status: TaskStatus) => {
   if (status === TaskStatus.DONE) {
     return {
@@ -153,39 +155,84 @@ export async function getTasksData(workspaceId: string): Promise<TasksData> {
   const tomorrowStart = addDays(todayStart, 1);
   const weekEnd = addDays(todayStart, 7);
 
-  const tasks = await prisma.task.findMany({
-    where: {
-      workspaceId,
-    },
-    include: {
-      assignee: {
-        select: {
-          name: true,
+  const [tasks, clients, deals, memberships] = await Promise.all([
+    prisma.task.findMany({
+      where: {
+        workspaceId,
+      },
+      include: {
+        assignee: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        client: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        deal: {
+          select: {
+            clientId: true,
+            id: true,
+            title: true,
+            value: true,
+          },
         },
       },
-      client: {
-        select: {
-          id: true,
-          name: true,
+      orderBy: [
+        {
+          dueDate: "asc",
+        },
+        {
+          createdAt: "desc",
+        },
+      ],
+    }),
+    prisma.client.findMany({
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+      where: {
+        workspaceId,
+      },
+    }),
+    prisma.deal.findMany({
+      orderBy: {
+        title: "asc",
+      },
+      select: {
+        clientId: true,
+        id: true,
+        title: true,
+      },
+      where: {
+        workspaceId,
+      },
+    }),
+    prisma.membership.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
       },
-      deal: {
-        select: {
-          id: true,
-          title: true,
-          value: true,
-        },
+      orderBy: {
+        createdAt: "asc",
       },
-    },
-    orderBy: [
-      {
-        dueDate: "asc",
+      where: {
+        workspaceId,
       },
-      {
-        createdAt: "desc",
-      },
-    ],
-  });
+    }),
+  ]);
 
   const mappedTasks: TaskListItem[] = tasks.map((task) => {
     const dueState = getDueState(task.dueDate, task.status);
@@ -199,6 +246,17 @@ export async function getTasksData(workspaceId: string): Promise<TasksData> {
       dueLabel: formatDueLabel(task.dueDate),
       dueState: dueState.label,
       dueStateColor: dueState.color,
+      editValues: {
+        assigneeId: task.assignee?.id ?? "",
+        clientId: task.client?.id ?? "",
+        dealId: task.deal?.id ?? "",
+        description: task.description ?? "",
+        dueDate: formatDateInput(task.dueDate),
+        priority: task.priority,
+        status: task.status,
+        taskId: task.id,
+        title: task.title,
+      },
       id: task.id,
       owner: task.assignee?.name ?? "Unassigned",
       priority: priorityLabels[task.priority],
@@ -243,6 +301,12 @@ export async function getTasksData(workspaceId: string): Promise<TasksData> {
   }));
 
   return {
+    clientOptions: clients,
+    dealOptions: deals,
+    memberOptions: memberships.map((membership) => ({
+      id: membership.user.id,
+      name: membership.user.name,
+    })),
     metrics: [
       {
         label: "Open tasks",

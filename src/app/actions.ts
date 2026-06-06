@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { ActivityType, ClientStatus, DealStage } from "@/generated/prisma/client";
+import { ActivityType, ClientStatus, DealStage, TaskPriority, TaskStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type ClientFormField = "contactEmail" | "contactName" | "estimatedValue" | "name" | "website";
@@ -28,8 +28,29 @@ export type DealFormState = {
 export type CreateDealFormState = DealFormState;
 export type UpdateDealFormState = DealFormState;
 
+export type TaskFormField =
+  | "assigneeId"
+  | "clientId"
+  | "dealId"
+  | "description"
+  | "dueDate"
+  | "priority"
+  | "status"
+  | "title";
+
+export type TaskFormState = {
+  fieldErrors?: Partial<Record<TaskFormField, string>>;
+  message: string;
+  status: "error" | "idle" | "success";
+};
+
+export type CreateTaskFormState = TaskFormState;
+export type UpdateTaskFormState = TaskFormState;
+
 const clientStatuses = new Set<string>(Object.values(ClientStatus));
 const dealStages = new Set<string>(Object.values(DealStage));
+const taskPriorities = new Set<string>(Object.values(TaskPriority));
+const taskStatuses = new Set<string>(Object.values(TaskStatus));
 
 const readField = (formData: FormData, field: string) => String(formData.get(field) ?? "").trim();
 
@@ -169,6 +190,58 @@ const validateDealPayload = (payload: ReturnType<typeof readDealPayload>) => {
   };
 };
 
+const readTaskPayload = (formData: FormData) => ({
+  assigneeId: readField(formData, "assigneeId"),
+  clientId: readField(formData, "clientId"),
+  dealId: readField(formData, "dealId"),
+  description: readField(formData, "description"),
+  dueDateInput: readField(formData, "dueDate"),
+  priority: readField(formData, "priority") || TaskPriority.MEDIUM,
+  status: readField(formData, "status") || TaskStatus.TODO,
+  title: readField(formData, "title"),
+});
+
+const parseDueDate = (dateInput: string): { error?: string; value: Date | null } => {
+  if (!dateInput) {
+    return { value: null };
+  }
+
+  const date = new Date(`${dateInput}T09:00:00.000Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    return { error: "Choose a valid due date.", value: null };
+  }
+
+  return { value: date };
+};
+
+const validateTaskPayload = (payload: ReturnType<typeof readTaskPayload>) => {
+  const fieldErrors: TaskFormState["fieldErrors"] = {};
+
+  if (payload.title.length < 3) {
+    fieldErrors.title = "Task title is required.";
+  }
+
+  if (!taskStatuses.has(payload.status)) {
+    fieldErrors.status = "Choose a valid status.";
+  }
+
+  if (!taskPriorities.has(payload.priority)) {
+    fieldErrors.priority = "Choose a valid priority.";
+  }
+
+  const dueDate = parseDueDate(payload.dueDateInput);
+
+  if (dueDate.error) {
+    fieldErrors.dueDate = dueDate.error;
+  }
+
+  return {
+    dueDate,
+    fieldErrors,
+  };
+};
+
 const revalidateDealPaths = (...clientIds: string[]) => {
   revalidatePath("/dashboard");
   revalidatePath("/clients");
@@ -179,6 +252,89 @@ const revalidateDealPaths = (...clientIds: string[]) => {
   for (const clientId of new Set(clientIds.filter(Boolean))) {
     revalidatePath(`/clients/${clientId}`);
   }
+};
+
+const revalidateTaskPaths = (...clientIds: string[]) => {
+  revalidatePath("/dashboard");
+  revalidatePath("/clients");
+  revalidatePath("/tasks");
+  revalidatePath("/reports");
+  revalidatePath("/billing");
+
+  for (const clientId of new Set(clientIds.filter(Boolean))) {
+    revalidatePath(`/clients/${clientId}`);
+  }
+};
+
+const resolveTaskRelations = async (workspaceId: string, payload: ReturnType<typeof readTaskPayload>) => {
+  const [client, deal, assignee] = await Promise.all([
+    payload.clientId
+      ? prisma.client.findFirst({
+          select: {
+            id: true,
+            name: true,
+          },
+          where: {
+            id: payload.clientId,
+            workspaceId,
+          },
+        })
+      : Promise.resolve(null),
+    payload.dealId
+      ? prisma.deal.findFirst({
+          select: {
+            client: {
+              select: {
+                name: true,
+              },
+            },
+            clientId: true,
+            id: true,
+            title: true,
+          },
+          where: {
+            id: payload.dealId,
+            workspaceId,
+          },
+        })
+      : Promise.resolve(null),
+    payload.assigneeId
+      ? prisma.membership.findFirst({
+          select: {
+            userId: true,
+          },
+          where: {
+            userId: payload.assigneeId,
+            workspaceId,
+          },
+        })
+      : Promise.resolve(null),
+  ]);
+  const fieldErrors: TaskFormState["fieldErrors"] = {};
+
+  if (payload.clientId && !client) {
+    fieldErrors.clientId = "Choose a valid client.";
+  }
+
+  if (payload.dealId && !deal) {
+    fieldErrors.dealId = "Choose a valid deal.";
+  }
+
+  if (payload.assigneeId && !assignee) {
+    fieldErrors.assigneeId = "Choose a valid assignee.";
+  }
+
+  if (client && deal && deal.clientId !== client.id) {
+    fieldErrors.dealId = "Selected deal belongs to another client.";
+  }
+
+  return {
+    assigneeId: assignee?.userId ?? null,
+    clientId: deal?.clientId ?? client?.id ?? null,
+    clientName: deal?.client.name ?? client?.name ?? "Workspace",
+    dealId: deal?.id ?? null,
+    fieldErrors,
+  };
 };
 
 export async function createClientAction(
@@ -665,6 +821,185 @@ export async function updateDealAction(
   }
 
   revalidateDealPaths(deal.client.id, client.id);
+
+  return {
+    message: `${payload.title} has been updated.`,
+    status: "success",
+  };
+}
+
+export async function createTaskAction(
+  _previousState: CreateTaskFormState,
+  formData: FormData,
+): Promise<CreateTaskFormState> {
+  const session = await auth();
+
+  if (!session?.user?.id || !session.user.workspaceId) {
+    return {
+      message: "Sign in again before adding a task.",
+      status: "error",
+    };
+  }
+
+  const payload = readTaskPayload(formData);
+  const { dueDate, fieldErrors } = validateTaskPayload(payload);
+  const relations = await resolveTaskRelations(session.user.workspaceId, payload);
+  const combinedFieldErrors = {
+    ...fieldErrors,
+    ...relations.fieldErrors,
+  };
+
+  if (Object.keys(combinedFieldErrors).length > 0) {
+    return {
+      fieldErrors: combinedFieldErrors,
+      message: "Fix the highlighted fields.",
+      status: "error",
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const task = await transaction.task.create({
+        data: {
+          assigneeId: relations.assigneeId,
+          clientId: relations.clientId,
+          completedAt: payload.status === TaskStatus.DONE ? new Date() : null,
+          dealId: relations.dealId,
+          description: payload.description || null,
+          dueDate: dueDate.value,
+          priority: payload.priority as TaskPriority,
+          status: payload.status as TaskStatus,
+          title: payload.title,
+          workspaceId: session.user.workspaceId,
+        },
+        select: {
+          id: true,
+          title: true,
+        },
+      });
+
+      await transaction.activity.create({
+        data: {
+          actorId: session.user.id,
+          clientId: relations.clientId,
+          dealId: relations.dealId,
+          message: `${task.title} task added for ${relations.clientName}.`,
+          type: ActivityType.TASK_CREATED,
+          workspaceId: session.user.workspaceId,
+        },
+      });
+    });
+  } catch {
+    return {
+      message: "Could not add the task. Try again.",
+      status: "error",
+    };
+  }
+
+  revalidateTaskPaths(relations.clientId ?? "");
+
+  return {
+    message: `${payload.title} has been added.`,
+    status: "success",
+  };
+}
+
+export async function updateTaskAction(
+  _previousState: UpdateTaskFormState,
+  formData: FormData,
+): Promise<UpdateTaskFormState> {
+  const session = await auth();
+
+  if (!session?.user?.id || !session.user.workspaceId) {
+    return {
+      message: "Sign in again before updating this task.",
+      status: "error",
+    };
+  }
+
+  const taskId = readField(formData, "taskId");
+  const payload = readTaskPayload(formData);
+  const { dueDate, fieldErrors } = validateTaskPayload(payload);
+
+  if (!taskId) {
+    return {
+      message: "Task id is missing.",
+      status: "error",
+    };
+  }
+
+  const [task, relations] = await Promise.all([
+    prisma.task.findFirst({
+      select: {
+        clientId: true,
+        completedAt: true,
+        id: true,
+      },
+      where: {
+        id: taskId,
+        workspaceId: session.user.workspaceId,
+      },
+    }),
+    resolveTaskRelations(session.user.workspaceId, payload),
+  ]);
+  const combinedFieldErrors = {
+    ...fieldErrors,
+    ...relations.fieldErrors,
+  };
+
+  if (!task) {
+    return {
+      message: "Task was not found.",
+      status: "error",
+    };
+  }
+
+  if (Object.keys(combinedFieldErrors).length > 0) {
+    return {
+      fieldErrors: combinedFieldErrors,
+      message: "Fix the highlighted fields.",
+      status: "error",
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (transaction) => {
+      await transaction.task.update({
+        data: {
+          assigneeId: relations.assigneeId,
+          clientId: relations.clientId,
+          completedAt: payload.status === TaskStatus.DONE ? (task.completedAt ?? new Date()) : null,
+          dealId: relations.dealId,
+          description: payload.description || null,
+          dueDate: dueDate.value,
+          priority: payload.priority as TaskPriority,
+          status: payload.status as TaskStatus,
+          title: payload.title,
+        },
+        where: {
+          id: task.id,
+        },
+      });
+
+      await transaction.activity.create({
+        data: {
+          actorId: session.user.id,
+          clientId: relations.clientId,
+          dealId: relations.dealId,
+          message: `${payload.title} task details updated.`,
+          type: ActivityType.NOTE,
+          workspaceId: session.user.workspaceId,
+        },
+      });
+    });
+  } catch {
+    return {
+      message: "Could not update the task. Try again.",
+      status: "error",
+    };
+  }
+
+  revalidateTaskPaths(task.clientId ?? "", relations.clientId ?? "");
 
   return {
     message: `${payload.title} has been updated.`,

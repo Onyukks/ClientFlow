@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { AddTaskDialog, EditTaskDialog } from "@/components/task-dialogs";
 import { getDashboardData } from "@/lib/dashboard-data";
 import { getTasksData } from "@/lib/tasks-data";
 
@@ -28,6 +29,17 @@ export default async function TasksPage() {
       workspaceName={dashboardData.workspaceName}
     >
       <div className="w-full space-y-6 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-2xl text-sm font-bold text-[#66756c]">
+            Create and update follow-ups while dashboard counters, client pages, reports, and billing usage stay current.
+          </p>
+          <AddTaskDialog
+            clients={tasksData.clientOptions}
+            deals={tasksData.dealOptions}
+            members={tasksData.memberOptions}
+          />
+        </div>
+
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
           <article className="overflow-hidden rounded-lg border border-[#173729] bg-[#10231b] text-white shadow-sm">
             <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_310px]">
@@ -148,6 +160,14 @@ export default async function TasksPage() {
                         </span>
                         <span className="text-sm font-bold text-[#66756c]">{task.dueLabel}</span>
                       </div>
+                      <div className="mt-4">
+                        <EditTaskDialog
+                          clients={tasksData.clientOptions}
+                          deals={tasksData.dealOptions}
+                          initialValues={task.editValues}
+                          members={tasksData.memberOptions}
+                        />
+                      </div>
                     </div>
                   ))
                 ) : (
@@ -179,9 +199,17 @@ export default async function TasksPage() {
                     <h3 className="text-lg font-black text-[#10231b]">{task.title}</h3>
                     <p className="mt-1 text-sm font-medium text-[#66756c]">{task.description}</p>
                   </div>
-                  <span className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-black ${task.statusColor}`}>
-                    {task.status}
-                  </span>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <span className={`rounded-lg px-2.5 py-1 text-xs font-black ${task.statusColor}`}>
+                      {task.status}
+                    </span>
+                    <EditTaskDialog
+                      clients={tasksData.clientOptions}
+                      deals={tasksData.dealOptions}
+                      initialValues={task.editValues}
+                      members={tasksData.memberOptions}
+                    />
+                  </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <div>
@@ -212,7 +240,7 @@ export default async function TasksPage() {
           </div>
 
           <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[980px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1120px] border-collapse text-left text-sm">
               <thead className="bg-[#f6f8f5] text-[#66756c]">
                 <tr>
                   <th className="px-5 py-3 font-black">Task</th>
@@ -222,6 +250,7 @@ export default async function TasksPage() {
                   <th className="px-5 py-3 font-black">Owner</th>
                   <th className="px-5 py-3 font-black">Due</th>
                   <th className="px-5 py-3 font-black">Revenue</th>
+                  <th className="px-5 py-3 font-black">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -260,6 +289,14 @@ export default async function TasksPage() {
                       </div>
                     </td>
                     <td className="px-5 py-4 font-black text-[#10231b]">{task.dealValue}</td>
+                    <td className="px-5 py-4">
+                      <EditTaskDialog
+                        clients={tasksData.clientOptions}
+                        deals={tasksData.dealOptions}
+                        initialValues={task.editValues}
+                        members={tasksData.memberOptions}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
