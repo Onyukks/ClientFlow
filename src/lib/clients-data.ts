@@ -69,6 +69,8 @@ const formatLongDate = (date: Date) =>
 
 const formatWebsite = (website: string | null) => website?.replace(/^https?:\/\//, "") ?? "Not added";
 
+const formatWebsiteInput = (website: string | null) => website?.replace(/^https?:\/\//, "") ?? "";
+
 const formatDueLabel = (dueDate: Date | null) => {
   if (!dueDate) {
     return "No date";
@@ -313,6 +315,7 @@ export async function getClientDetailsData(workspaceId: string, clientId: string
     (total, deal) => total + Number(deal.value) * (deal.probability / 100),
     0,
   );
+  const primaryContact = client.contacts[0];
 
   return {
     activities: client.activities.map(mapActivity),
@@ -324,6 +327,18 @@ export async function getClientDetailsData(workspaceId: string, clientId: string
       title: contact.title ?? "No title",
     })),
     deals: client.deals.map(mapDeal),
+    editValues: {
+      clientId: client.id,
+      contactEmail: primaryContact?.email ?? "",
+      contactId: primaryContact?.id ?? "",
+      contactName: primaryContact?.name ?? "",
+      contactTitle: primaryContact?.title ?? "",
+      estimatedValue: Number(client.estimatedValue).toString(),
+      industry: client.industry ?? "",
+      name: client.name,
+      status: client.status,
+      website: formatWebsiteInput(client.website),
+    },
     estimatedValue: formatCurrency(Number(client.estimatedValue)),
     id: client.id,
     industry: client.industry ?? "General",

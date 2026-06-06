@@ -70,10 +70,24 @@ export type ClientDetailMetric = {
   value: string;
 };
 
+export type ClientEditValues = {
+  clientId: string;
+  contactEmail: string;
+  contactId: string;
+  contactName: string;
+  contactTitle: string;
+  estimatedValue: string;
+  industry: string;
+  name: string;
+  status: string;
+  website: string;
+};
+
 export type ClientDetailData = {
   activities: ClientDetailActivity[];
   contacts: ClientDetailContact[];
   deals: ClientDetailDeal[];
+  editValues: ClientEditValues;
   estimatedValue: string;
   id: string;
   industry: string;

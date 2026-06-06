@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { EditClientDialog } from "@/components/edit-client-dialog";
 import { getClientDetailsData } from "@/lib/clients-data";
 import { getDashboardData } from "@/lib/dashboard-data";
 
@@ -39,7 +40,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
       workspaceName={dashboardData.workspaceName}
     >
       <div className="w-full space-y-6 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
-        <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Link
             className="inline-flex items-center gap-2 rounded-lg border border-[#d9e2dc] bg-white px-4 py-2.5 text-sm font-black text-[#10231b] shadow-sm hover:bg-[#f4f7fb]"
             href="/clients"
@@ -47,6 +48,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
             <ArrowLeft aria-hidden="true" size={17} strokeWidth={2.6} />
             <span>Clients</span>
           </Link>
+          <EditClientDialog initialValues={client.editValues} />
         </div>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
