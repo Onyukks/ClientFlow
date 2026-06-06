@@ -1,9 +1,10 @@
 "use client";
 
-import { LogOut, Menu, Plus, X } from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useState, type ReactNode } from "react";
+import { AddClientDialog } from "@/components/add-client-dialog";
 import type { DashboardSummary } from "@/types/dashboard";
 
 type NavItem = {
@@ -174,10 +175,7 @@ export function AppShell({
                 <span className="block truncate">{userEmail}</span>
               </div>
               {primaryActionLabel ? (
-                <button className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#10231b] px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-[#1f3a2f]">
-                  <Plus aria-hidden="true" size={17} strokeWidth={2.6} />
-                  <span>{primaryActionLabel}</span>
-                </button>
+                <AddClientDialog label={primaryActionLabel} />
               ) : null}
               <button
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#d9e2dc] bg-white px-5 py-3 text-sm font-black text-[#10231b] shadow-sm hover:bg-[#f4f7fb]"
