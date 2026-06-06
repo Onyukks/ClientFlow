@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import type { DashboardData } from "@/types/dashboard";
 
@@ -132,9 +133,12 @@ export function DashboardShell({ data, userEmail, userName, workspaceSlug }: Das
                 <h2 className="text-xl font-black text-[#10231b]">Deal pipeline</h2>
                 <p className="mt-1 text-sm font-medium text-[#66756c]">Qualified opportunities by stage</p>
               </div>
-              <button className="w-full rounded-lg border border-[#d9e2dc] bg-white px-4 py-2.5 text-sm font-black text-[#10231b] hover:bg-[#f4f7fb] sm:w-auto">
+              <Link
+                className="inline-flex w-full justify-center rounded-lg border border-[#d9e2dc] bg-white px-4 py-2.5 text-sm font-black text-[#10231b] hover:bg-[#f4f7fb] sm:w-auto"
+                href="/deals"
+              >
                 View all
-              </button>
+              </Link>
             </div>
 
             <div className="overflow-x-auto">
