@@ -29,7 +29,7 @@ const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Clients", href: "/clients" },
   { label: "Deals", href: "/deals" },
-  { label: "Tasks" },
+  { label: "Tasks", href: "/tasks" },
   { label: "Reports" },
   { label: "Billing" },
 ];

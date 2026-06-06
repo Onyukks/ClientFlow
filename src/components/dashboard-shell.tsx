@@ -173,7 +173,15 @@ export function DashboardShell({ data, userEmail, userName, workspaceSlug }: Das
 
           <div className="grid gap-6 sm:grid-cols-2 2xl:grid-cols-1">
             <article className="rounded-lg border border-[#d9e2dc] bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-black text-[#10231b]">Tasks</h2>
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-xl font-black text-[#10231b]">Tasks</h2>
+                <Link
+                  className="rounded-lg border border-[#d9e2dc] bg-white px-3 py-2 text-xs font-black text-[#10231b] hover:bg-[#f4f7fb]"
+                  href="/tasks"
+                >
+                  View all
+                </Link>
+              </div>
               <div className="mt-4 divide-y divide-[#edf0ee]">
                 {data.tasks.map((task) => (
                   <div key={task.title} className="py-4 first:pt-0 last:pb-0">
