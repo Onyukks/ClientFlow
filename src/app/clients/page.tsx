@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
@@ -144,7 +145,11 @@ export default async function ClientsPage() {
 
             <div className="grid gap-3 p-4 md:hidden">
               {clientsData.clients.map((client) => (
-                <div className="rounded-lg border border-[#edf0ee] bg-[#fbfcfa] p-4" key={client.id}>
+                <Link
+                  className="rounded-lg border border-[#edf0ee] bg-[#fbfcfa] p-4 transition hover:border-[#10231b] hover:bg-white"
+                  href={`/clients/${client.id}`}
+                  key={client.id}
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="truncate text-lg font-black text-[#10231b]">{client.name}</h3>
@@ -172,7 +177,7 @@ export default async function ClientsPage() {
                       <p className="mt-1 font-black text-[#10231b]">{client.openTasks}</p>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
 
@@ -193,7 +198,9 @@ export default async function ClientsPage() {
                   {clientsData.clients.map((client) => (
                     <tr className="border-t border-[#edf0ee]" key={client.id}>
                       <td className="px-5 py-4">
-                        <p className="font-black text-[#10231b]">{client.name}</p>
+                        <Link className="font-black text-[#10231b] hover:underline" href={`/clients/${client.id}`}>
+                          {client.name}
+                        </Link>
                         <p className="mt-1 text-xs font-bold text-[#66756c]">{client.industry}</p>
                       </td>
                       <td className="px-5 py-4">
@@ -225,7 +232,9 @@ export default async function ClientsPage() {
                 <div className="py-4 first:pt-0 last:pb-0" key={client.id}>
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="truncate font-black text-[#10231b]">{client.name}</p>
+                      <Link className="truncate font-black text-[#10231b] hover:underline" href={`/clients/${client.id}`}>
+                        {client.name}
+                      </Link>
                       <p className="mt-1 truncate text-sm font-medium text-[#66756c]">{client.website}</p>
                     </div>
                     <span className={`shrink-0 rounded-lg px-2.5 py-1 text-xs font-black ${client.statusColor}`}>

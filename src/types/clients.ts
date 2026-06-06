@@ -27,3 +27,61 @@ export type ClientsData = {
   clients: ClientListItem[];
   metrics: ClientsMetric[];
 };
+
+export type ClientDetailContact = {
+  email: string;
+  id: string;
+  name: string;
+  phone: string;
+  title: string;
+};
+
+export type ClientDetailDeal = {
+  expectedCloseDate: string;
+  id: string;
+  probability: string;
+  stage: string;
+  stageColor: string;
+  title: string;
+  value: string;
+};
+
+export type ClientDetailTask = {
+  description: string;
+  due: string;
+  id: string;
+  priority: string;
+  priorityColor: string;
+  status: string;
+  title: string;
+};
+
+export type ClientDetailActivity = {
+  actor: string;
+  date: string;
+  id: string;
+  message: string;
+  type: string;
+};
+
+export type ClientDetailMetric = {
+  label: string;
+  note: string;
+  value: string;
+};
+
+export type ClientDetailData = {
+  activities: ClientDetailActivity[];
+  contacts: ClientDetailContact[];
+  deals: ClientDetailDeal[];
+  estimatedValue: string;
+  id: string;
+  industry: string;
+  metrics: ClientDetailMetric[];
+  name: string;
+  status: string;
+  statusColor: string;
+  tasks: ClientDetailTask[];
+  updatedAt: string;
+  website: string;
+};
