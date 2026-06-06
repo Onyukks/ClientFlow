@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { AddDealDialog, EditDealDialog } from "@/components/deal-dialogs";
 import { getDashboardData } from "@/lib/dashboard-data";
 import { getDealsData } from "@/lib/deals-data";
 
@@ -21,13 +22,19 @@ export default async function DealsPage() {
   return (
     <AppShell
       activeItem="Deals"
-      primaryActionLabel="Add client"
       summary={dashboardData.summary}
       title="Deals"
       userEmail={session.user.email ?? "demo@clientflow.app"}
       workspaceName={dashboardData.workspaceName}
     >
       <div className="w-full space-y-6 px-4 py-5 sm:px-6 lg:px-8 xl:px-10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-2xl text-sm font-bold text-[#66756c]">
+            Create and update opportunities while the dashboard, reports, billing usage, and client pages stay in sync.
+          </p>
+          <AddDealDialog clients={dealsData.clientOptions} />
+        </div>
+
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
           <article className="overflow-hidden rounded-lg border border-[#173729] bg-[#10231b] text-white shadow-sm">
             <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_310px]">
@@ -164,7 +171,7 @@ export default async function DealsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[940px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[1040px] border-collapse text-left text-sm">
               <thead className="bg-[#f6f8f5] text-[#66756c]">
                 <tr>
                   <th className="px-5 py-3 font-black">Deal</th>
@@ -174,6 +181,7 @@ export default async function DealsPage() {
                   <th className="px-5 py-3 font-black">Weighted</th>
                   <th className="px-5 py-3 font-black">Close</th>
                   <th className="px-5 py-3 font-black">Value</th>
+                  <th className="px-5 py-3 font-black">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -197,6 +205,9 @@ export default async function DealsPage() {
                     <td className="px-5 py-4 font-black text-[#10231b]">{deal.weightedValue}</td>
                     <td className="px-5 py-4 font-medium text-[#66756c]">{deal.closeDate}</td>
                     <td className="px-5 py-4 font-black text-[#10231b]">{deal.value}</td>
+                    <td className="px-5 py-4">
+                      <EditDealDialog clients={dealsData.clientOptions} initialValues={deal.editValues} />
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
-import { ActivityType, ClientStatus } from "@/generated/prisma/client";
+import { ActivityType, ClientStatus, DealStage } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type ClientFormField = "contactEmail" | "contactName" | "estimatedValue" | "name" | "website";
@@ -17,7 +17,19 @@ export type CreateClientField = ClientFormField;
 export type CreateClientFormState = ClientFormState;
 export type UpdateClientFormState = ClientFormState;
 
+export type DealFormField = "clientId" | "expectedCloseDate" | "probability" | "stage" | "title" | "value";
+
+export type DealFormState = {
+  fieldErrors?: Partial<Record<DealFormField, string>>;
+  message: string;
+  status: "error" | "idle" | "success";
+};
+
+export type CreateDealFormState = DealFormState;
+export type UpdateDealFormState = DealFormState;
+
 const clientStatuses = new Set<string>(Object.values(ClientStatus));
+const dealStages = new Set<string>(Object.values(DealStage));
 
 const readField = (formData: FormData, field: string) => String(formData.get(field) ?? "").trim();
 
@@ -90,6 +102,83 @@ const validateClientPayload = (payload: ReturnType<typeof readClientPayload>) =>
     fieldErrors,
     website,
   };
+};
+
+const readDealPayload = (formData: FormData) => {
+  const valueInput = readField(formData, "value").replace(/[$,]/g, "");
+  const probabilityInput = readField(formData, "probability");
+
+  return {
+    clientId: readField(formData, "clientId"),
+    expectedCloseDateInput: readField(formData, "expectedCloseDate"),
+    probability: probabilityInput ? Number(probabilityInput) : 50,
+    probabilityInput,
+    stage: readField(formData, "stage") || DealStage.QUALIFIED,
+    title: readField(formData, "title"),
+    value: valueInput ? Number(valueInput) : 0,
+    valueInput,
+  };
+};
+
+const parseExpectedCloseDate = (dateInput: string): { error?: string; value: Date | null } => {
+  if (!dateInput) {
+    return { value: null };
+  }
+
+  const date = new Date(`${dateInput}T09:00:00.000Z`);
+
+  if (Number.isNaN(date.getTime())) {
+    return { error: "Choose a valid close date.", value: null };
+  }
+
+  return { value: date };
+};
+
+const validateDealPayload = (payload: ReturnType<typeof readDealPayload>) => {
+  const fieldErrors: DealFormState["fieldErrors"] = {};
+
+  if (!payload.clientId) {
+    fieldErrors.clientId = "Choose a client.";
+  }
+
+  if (payload.title.length < 3) {
+    fieldErrors.title = "Deal title is required.";
+  }
+
+  if (!dealStages.has(payload.stage)) {
+    fieldErrors.stage = "Choose a valid stage.";
+  }
+
+  if (!Number.isFinite(payload.value) || payload.value < 0) {
+    fieldErrors.value = "Enter a valid deal value.";
+  }
+
+  if (!Number.isFinite(payload.probability) || payload.probability < 0 || payload.probability > 100) {
+    fieldErrors.probability = "Probability must be between 0 and 100.";
+  }
+
+  const expectedCloseDate = parseExpectedCloseDate(payload.expectedCloseDateInput);
+
+  if (expectedCloseDate.error) {
+    fieldErrors.expectedCloseDate = expectedCloseDate.error;
+  }
+
+  return {
+    expectedCloseDate,
+    fieldErrors,
+  };
+};
+
+const revalidateDealPaths = (...clientIds: string[]) => {
+  revalidatePath("/dashboard");
+  revalidatePath("/clients");
+  revalidatePath("/deals");
+  revalidatePath("/reports");
+  revalidatePath("/billing");
+
+  for (const clientId of new Set(clientIds.filter(Boolean))) {
+    revalidatePath(`/clients/${clientId}`);
+  }
 };
 
 export async function createClientAction(
@@ -327,6 +416,258 @@ export async function updateClientAction(
 
   return {
     message: `${payload.name} has been updated.`,
+    status: "success",
+  };
+}
+
+export async function createDealAction(
+  _previousState: CreateDealFormState,
+  formData: FormData,
+): Promise<CreateDealFormState> {
+  const session = await auth();
+
+  if (!session?.user?.id || !session.user.workspaceId) {
+    return {
+      message: "Sign in again before adding a deal.",
+      status: "error",
+    };
+  }
+
+  const payload = readDealPayload(formData);
+  const { expectedCloseDate, fieldErrors } = validateDealPayload(payload);
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      fieldErrors,
+      message: "Fix the highlighted fields.",
+      status: "error",
+    };
+  }
+
+  const client = await prisma.client.findFirst({
+    select: {
+      id: true,
+      name: true,
+    },
+    where: {
+      id: payload.clientId,
+      workspaceId: session.user.workspaceId,
+    },
+  });
+
+  if (!client) {
+    return {
+      fieldErrors: {
+        clientId: "Choose a valid client.",
+      },
+      message: "Client was not found.",
+      status: "error",
+    };
+  }
+
+  const duplicateDeal = await prisma.deal.findFirst({
+    select: {
+      id: true,
+    },
+    where: {
+      clientId: client.id,
+      title: payload.title,
+      workspaceId: session.user.workspaceId,
+    },
+  });
+
+  if (duplicateDeal) {
+    return {
+      fieldErrors: {
+        title: "This client already has a deal with that title.",
+      },
+      message: "Deal already exists.",
+      status: "error",
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (transaction) => {
+      const deal = await transaction.deal.create({
+        data: {
+          clientId: client.id,
+          expectedCloseDate: expectedCloseDate.value,
+          probability: Math.round(payload.probability),
+          stage: payload.stage as DealStage,
+          title: payload.title,
+          value: payload.value.toString(),
+          workspaceId: session.user.workspaceId,
+        },
+        select: {
+          id: true,
+          title: true,
+        },
+      });
+
+      await transaction.activity.create({
+        data: {
+          actorId: session.user.id,
+          clientId: client.id,
+          dealId: deal.id,
+          message: `${deal.title} added for ${client.name}.`,
+          type: ActivityType.DEAL_UPDATED,
+          workspaceId: session.user.workspaceId,
+        },
+      });
+    });
+  } catch {
+    return {
+      message: "Could not add the deal. Try again.",
+      status: "error",
+    };
+  }
+
+  revalidateDealPaths(client.id);
+
+  return {
+    message: `${payload.title} has been added.`,
+    status: "success",
+  };
+}
+
+export async function updateDealAction(
+  _previousState: UpdateDealFormState,
+  formData: FormData,
+): Promise<UpdateDealFormState> {
+  const session = await auth();
+
+  if (!session?.user?.id || !session.user.workspaceId) {
+    return {
+      message: "Sign in again before updating this deal.",
+      status: "error",
+    };
+  }
+
+  const dealId = readField(formData, "dealId");
+  const payload = readDealPayload(formData);
+  const { expectedCloseDate, fieldErrors } = validateDealPayload(payload);
+
+  if (!dealId) {
+    return {
+      message: "Deal id is missing.",
+      status: "error",
+    };
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      fieldErrors,
+      message: "Fix the highlighted fields.",
+      status: "error",
+    };
+  }
+
+  const [deal, client] = await Promise.all([
+    prisma.deal.findFirst({
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      where: {
+        id: dealId,
+        workspaceId: session.user.workspaceId,
+      },
+    }),
+    prisma.client.findFirst({
+      select: {
+        id: true,
+        name: true,
+      },
+      where: {
+        id: payload.clientId,
+        workspaceId: session.user.workspaceId,
+      },
+    }),
+  ]);
+
+  if (!deal) {
+    return {
+      message: "Deal was not found.",
+      status: "error",
+    };
+  }
+
+  if (!client) {
+    return {
+      fieldErrors: {
+        clientId: "Choose a valid client.",
+      },
+      message: "Client was not found.",
+      status: "error",
+    };
+  }
+
+  const duplicateDeal = await prisma.deal.findFirst({
+    select: {
+      id: true,
+    },
+    where: {
+      clientId: client.id,
+      id: {
+        not: deal.id,
+      },
+      title: payload.title,
+      workspaceId: session.user.workspaceId,
+    },
+  });
+
+  if (duplicateDeal) {
+    return {
+      fieldErrors: {
+        title: "This client already has a deal with that title.",
+      },
+      message: "Deal already exists.",
+      status: "error",
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (transaction) => {
+      await transaction.deal.update({
+        data: {
+          clientId: client.id,
+          expectedCloseDate: expectedCloseDate.value,
+          probability: Math.round(payload.probability),
+          stage: payload.stage as DealStage,
+          title: payload.title,
+          value: payload.value.toString(),
+        },
+        where: {
+          id: deal.id,
+        },
+      });
+
+      await transaction.activity.create({
+        data: {
+          actorId: session.user.id,
+          clientId: client.id,
+          dealId: deal.id,
+          message: `${payload.title} deal details updated.`,
+          type: ActivityType.DEAL_UPDATED,
+          workspaceId: session.user.workspaceId,
+        },
+      });
+    });
+  } catch {
+    return {
+      message: "Could not update the deal. Try again.",
+      status: "error",
+    };
+  }
+
+  revalidateDealPaths(deal.client.id, client.id);
+
+  return {
+    message: `${payload.title} has been updated.`,
     status: "success",
   };
 }

@@ -47,6 +47,8 @@ const formatDate = (date: Date | null) => {
   });
 };
 
+const formatDateInput = (date: Date | null) => date?.toISOString().slice(0, 10) ?? "";
+
 const mapDeal = (deal: {
   client: {
     contacts: { name: string }[];
@@ -67,6 +69,15 @@ const mapDeal = (deal: {
     clientName: deal.client.name,
     closeDate: formatDate(deal.expectedCloseDate),
     contact: deal.client.contacts[0]?.name ?? "No contact",
+    editValues: {
+      clientId: deal.client.id,
+      dealId: deal.id,
+      expectedCloseDate: formatDateInput(deal.expectedCloseDate),
+      probability: String(deal.probability),
+      stage: deal.stage,
+      title: deal.title,
+      value: value.toString(),
+    },
     id: deal.id,
     probability: `${deal.probability}%`,
     stage: formatEnumLabel(deal.stage),
@@ -78,34 +89,48 @@ const mapDeal = (deal: {
 };
 
 export async function getDealsData(workspaceId: string): Promise<DealsData> {
-  const deals = await prisma.deal.findMany({
-    include: {
-      client: {
-        include: {
-          contacts: {
-            orderBy: {
-              createdAt: "asc",
+  const [deals, clients] = await Promise.all([
+    prisma.deal.findMany({
+      include: {
+        client: {
+          include: {
+            contacts: {
+              orderBy: {
+                createdAt: "asc",
+              },
+              select: {
+                name: true,
+              },
+              take: 1,
             },
-            select: {
-              name: true,
-            },
-            take: 1,
           },
         },
       },
-    },
-    orderBy: [
-      {
-        expectedCloseDate: "asc",
+      orderBy: [
+        {
+          expectedCloseDate: "asc",
+        },
+        {
+          updatedAt: "desc",
+        },
+      ],
+      where: {
+        workspaceId,
       },
-      {
-        updatedAt: "desc",
+    }),
+    prisma.client.findMany({
+      orderBy: {
+        name: "asc",
       },
-    ],
-    where: {
-      workspaceId,
-    },
-  });
+      select: {
+        id: true,
+        name: true,
+      },
+      where: {
+        workspaceId,
+      },
+    }),
+  ]);
 
   const openDeals = deals.filter((deal) => deal.stage !== DealStage.WON && deal.stage !== DealStage.LOST);
   const pipelineValue = openDeals.reduce((total, deal) => total + Number(deal.value), 0);
@@ -119,6 +144,7 @@ export async function getDealsData(workspaceId: string): Promise<DealsData> {
   const mappedDeals = deals.map(mapDeal);
 
   return {
+    clientOptions: clients,
     deals: mappedDeals,
     metrics: [
       {

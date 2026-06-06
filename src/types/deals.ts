@@ -7,11 +7,27 @@ export type DealsMetric = {
   value: string;
 };
 
+export type DealClientOption = {
+  id: string;
+  name: string;
+};
+
+export type DealEditValues = {
+  clientId: string;
+  dealId: string;
+  expectedCloseDate: string;
+  probability: string;
+  stage: string;
+  title: string;
+  value: string;
+};
+
 export type DealListItem = {
   clientId: string;
   clientName: string;
   closeDate: string;
   contact: string;
+  editValues: DealEditValues;
   id: string;
   probability: string;
   stage: string;
@@ -29,6 +45,7 @@ export type DealStageGroup = {
 };
 
 export type DealsData = {
+  clientOptions: DealClientOption[];
   deals: DealListItem[];
   metrics: DealsMetric[];
   stageGroups: DealStageGroup[];
