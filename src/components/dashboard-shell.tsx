@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { useState } from "react";
 
 const navItems = ["Dashboard", "Clients", "Deals", "Tasks", "Reports", "Billing"];
@@ -129,7 +130,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function DashboardShell() {
+type DashboardShellProps = {
+  userEmail: string;
+  userName: string;
+  workspaceSlug: string;
+};
+
+export function DashboardShell({ userEmail, userName, workspaceSlug }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -182,12 +189,19 @@ export function DashboardShell() {
               </div>
             </div>
 
-            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] xl:w-auto">
+            <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] xl:w-auto">
               <div className="min-w-0 rounded-lg border border-[#d9e2dc] bg-[#f8faf7] px-4 py-3 text-sm font-semibold text-[#536258] shadow-sm">
-                <span className="block truncate">demo@clientflow.app</span>
+                <span className="block truncate">{userEmail}</span>
               </div>
               <button className="rounded-lg bg-[#10231b] px-5 py-3 text-sm font-black text-white shadow-sm hover:bg-[#1f3a2f]">
                 Add client
+              </button>
+              <button
+                className="rounded-lg border border-[#d9e2dc] bg-white px-5 py-3 text-sm font-black text-[#10231b] shadow-sm hover:bg-[#f4f7fb]"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                type="button"
+              >
+                Logout
               </button>
             </div>
           </div>
@@ -249,7 +263,9 @@ export function DashboardShell() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-black text-[#10231b]">Today&apos;s focus</h2>
-                  <p className="text-sm font-medium text-[#66756c]">Priority movement</p>
+                  <p className="text-sm font-medium text-[#66756c]">
+                    {userName} - {workspaceSlug}
+                  </p>
                 </div>
                 <span className="rounded-lg bg-rose-50 px-3 py-1 text-sm font-black text-rose-700">3 alerts</span>
               </div>

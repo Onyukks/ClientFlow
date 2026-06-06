@@ -51,6 +51,14 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+## App Routes
+
+- `/` - public product preview
+- `/login` - demo sign-in page
+- `/dashboard` - protected CRM dashboard
+
+Demo credentials are created by `npm run db:seed` from `DEMO_USER_EMAIL` and `DEMO_USER_PASSWORD`.
+
 ## Environment Variables
 
 ```bash
