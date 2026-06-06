@@ -30,7 +30,7 @@ const navItems: NavItem[] = [
   { label: "Clients", href: "/clients" },
   { label: "Deals", href: "/deals" },
   { label: "Tasks", href: "/tasks" },
-  { label: "Reports" },
+  { label: "Reports", href: "/reports" },
   { label: "Billing" },
 ];
 
