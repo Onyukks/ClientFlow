@@ -3,92 +3,19 @@
 import { Menu, X } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useState } from "react";
+import type { DashboardData } from "@/types/dashboard";
 
 const navItems = ["Dashboard", "Clients", "Deals", "Tasks", "Reports", "Billing"];
 
-const metrics = [
-  {
-    label: "Pipeline value",
-    value: "$128,400",
-    change: "+12.8%",
-    note: "vs last month",
-    accent: "bg-emerald-500",
-    tint: "bg-emerald-50 text-emerald-700",
-  },
-  {
-    label: "Active clients",
-    value: "42",
-    change: "+6",
-    note: "new this week",
-    accent: "bg-blue-500",
-    tint: "bg-blue-50 text-blue-700",
-  },
-  {
-    label: "Open tasks",
-    value: "18",
-    change: "5",
-    note: "due today",
-    accent: "bg-amber-500",
-    tint: "bg-amber-50 text-amber-700",
-  },
-  {
-    label: "Close rate",
-    value: "38%",
-    change: "+4.2%",
-    note: "rolling average",
-    accent: "bg-rose-500",
-    tint: "bg-rose-50 text-rose-700",
-  },
-];
-
-const pipeline = [
-  {
-    company: "Northstar Labs",
-    contact: "Amina Bello",
-    stage: "Proposal",
-    value: "$24,000",
-    probability: "72%",
-    color: "bg-blue-50 text-blue-700",
-  },
-  {
-    company: "Clearline Finance",
-    contact: "Daniel Hart",
-    stage: "Discovery",
-    value: "$18,500",
-    probability: "48%",
-    color: "bg-amber-50 text-amber-700",
-  },
-  {
-    company: "Urban Nest",
-    contact: "Fatima Okoro",
-    stage: "Negotiation",
-    value: "$31,200",
-    probability: "81%",
-    color: "bg-emerald-50 text-emerald-700",
-  },
-  {
-    company: "Medix Cloud",
-    contact: "James Carter",
-    stage: "Qualified",
-    value: "$14,800",
-    probability: "55%",
-    color: "bg-rose-50 text-rose-700",
-  },
-];
-
-const tasks = [
-  { title: "Send revised Northstar proposal", owner: "Onyeukwu", due: "Today", priority: "High" },
-  { title: "Prepare Urban Nest onboarding plan", owner: "Sales", due: "Tomorrow", priority: "Medium" },
-  { title: "Review subscription terms", owner: "Finance", due: "Friday", priority: "Low" },
-];
-
-const activity = [
-  "Proposal sent to Northstar Labs",
-  "Clearline Finance moved to Discovery",
-  "Urban Nest follow-up scheduled",
-];
-
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({
+  onNavigate,
+  summary,
+  workspaceName,
+}: {
+  onNavigate?: () => void;
+  summary: DashboardData["summary"];
+  workspaceName: string;
+}) {
   return (
     <div className="flex min-h-full flex-col">
       <div className="flex items-center gap-3">
@@ -115,15 +42,17 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           >
             <span>{item}</span>
             {item === "Tasks" ? (
-              <span className="rounded-lg bg-amber-400 px-2 py-0.5 text-xs font-black text-[#10231b]">5</span>
+              <span className="rounded-lg bg-amber-400 px-2 py-0.5 text-xs font-black text-[#10231b]">
+                {summary.dueToday}
+              </span>
             ) : null}
           </button>
         ))}
       </nav>
 
       <div className="mt-auto border-t border-white/10 pt-5">
-        <p className="text-sm font-semibold text-[#9fb5aa]">Demo workspace</p>
-        <p className="mt-2 text-2xl font-black">$128.4k</p>
+        <p className="text-sm font-semibold text-[#9fb5aa]">{workspaceName}</p>
+        <p className="mt-2 text-2xl font-black">{summary.weightedPipelineValue}</p>
         <p className="mt-1 text-sm text-[#c8d8d0]">Weighted pipeline tracked across active accounts.</p>
       </div>
     </div>
@@ -134,15 +63,16 @@ type DashboardShellProps = {
   userEmail: string;
   userName: string;
   workspaceSlug: string;
+  data: DashboardData;
 };
 
-export function DashboardShell({ userEmail, userName, workspaceSlug }: DashboardShellProps) {
+export function DashboardShell({ userEmail, userName, workspaceSlug, data }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <main className="min-h-screen w-full overflow-x-hidden bg-[#f4f7fb] text-[#111827]">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[280px] overflow-y-auto border-r border-[#1e352b] bg-[#10231b] px-5 py-6 text-white lg:block">
-        <SidebarContent />
+        <SidebarContent summary={data.summary} workspaceName={data.workspaceName} />
       </aside>
 
       {sidebarOpen ? (
@@ -164,7 +94,11 @@ export function DashboardShell({ userEmail, userName, workspaceSlug }: Dashboard
                 <X aria-hidden="true" size={20} strokeWidth={2.4} />
               </button>
             </div>
-            <SidebarContent onNavigate={() => setSidebarOpen(false)} />
+            <SidebarContent
+              onNavigate={() => setSidebarOpen(false)}
+              summary={data.summary}
+              workspaceName={data.workspaceName}
+            />
           </aside>
         </div>
       ) : null}
@@ -214,19 +148,19 @@ export function DashboardShell({ userEmail, userName, workspaceSlug }: Dashboard
                 <div className="min-w-0">
                   <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#9fb5aa]">Revenue forecast</p>
                   <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight sm:text-4xl">
-                    Your sales pipeline is up 12.8% this month.
+                    {data.summary.revenueHeadline}
                   </h2>
                   <div className="mt-6 grid gap-4 sm:grid-cols-3">
                     <div className="border-l-2 border-emerald-400 pl-4">
-                      <p className="text-2xl font-black">$44.2k</p>
+                      <p className="text-2xl font-black">{data.summary.expectedCloseValue}</p>
                       <p className="text-sm text-[#c8d8d0]">Expected close</p>
                     </div>
                     <div className="border-l-2 border-blue-400 pl-4">
-                      <p className="text-2xl font-black">14</p>
+                      <p className="text-2xl font-black">{data.summary.hotAccounts}</p>
                       <p className="text-sm text-[#c8d8d0]">Hot accounts</p>
                     </div>
                     <div className="border-l-2 border-amber-400 pl-4">
-                      <p className="text-2xl font-black">5</p>
+                      <p className="text-2xl font-black">{data.summary.dueToday}</p>
                       <p className="text-sm text-[#c8d8d0]">Due today</p>
                     </div>
                   </div>
@@ -236,15 +170,20 @@ export function DashboardShell({ userEmail, userName, workspaceSlug }: Dashboard
                   <div className="flex items-end justify-between gap-3">
                     <div>
                       <p className="text-sm text-[#c8d8d0]">Target progress</p>
-                      <p className="mt-1 text-3xl font-black">68%</p>
+                      <p className="mt-1 text-3xl font-black">{data.summary.targetProgressLabel}</p>
                     </div>
-                    <p className="rounded-lg bg-emerald-400 px-3 py-1 text-sm font-black text-[#10231b]">On track</p>
+                    <p className="rounded-lg bg-emerald-400 px-3 py-1 text-sm font-black text-[#10231b]">
+                      On track
+                    </p>
                   </div>
                   <div className="mt-6 h-3 overflow-hidden rounded-lg bg-white/10">
-                    <div className="h-full w-[68%] rounded-lg bg-emerald-400" />
+                    <div
+                      className="h-full rounded-lg bg-emerald-400"
+                      style={{ width: `${data.summary.targetProgress}%` }}
+                    />
                   </div>
                   <div className="mt-6 grid grid-cols-7 items-end gap-2">
-                    {[35, 62, 48, 72, 54, 88, 76].map((height, index) => (
+                    {data.summary.chartBars.map((height, index) => (
                       <div key={height + index} className="flex h-28 items-end rounded-lg bg-white/5 px-1.5">
                         <div
                           className={`w-full rounded-md ${
@@ -267,18 +206,20 @@ export function DashboardShell({ userEmail, userName, workspaceSlug }: Dashboard
                     {userName} - {workspaceSlug}
                   </p>
                 </div>
-                <span className="rounded-lg bg-rose-50 px-3 py-1 text-sm font-black text-rose-700">3 alerts</span>
+                <span className="rounded-lg bg-rose-50 px-3 py-1 text-sm font-black text-rose-700">
+                  {data.summary.alertCount} alerts
+                </span>
               </div>
 
               <div className="mt-5 space-y-4">
-                {activity.map((item, index) => (
-                  <div key={item} className="flex gap-3">
+                {data.activity.map((item, index) => (
+                  <div key={item.message} className="flex gap-3">
                     <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#edf7f1] text-xs font-black text-emerald-700">
                       {index + 1}
                     </span>
                     <div className="min-w-0 border-b border-[#edf0ee] pb-4 last:border-b-0 last:pb-0">
-                      <p className="font-bold text-[#10231b]">{item}</p>
-                      <p className="mt-1 text-sm text-[#66756c]">Updated in the demo workspace</p>
+                      <p className="font-bold text-[#10231b]">{item.message}</p>
+                      <p className="mt-1 text-sm text-[#66756c]">{item.meta}</p>
                     </div>
                   </div>
                 ))}
@@ -287,7 +228,7 @@ export function DashboardShell({ userEmail, userName, workspaceSlug }: Dashboard
           </section>
 
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {metrics.map((metric) => (
+            {data.metrics.map((metric) => (
               <article
                 key={metric.label}
                 className="rounded-lg border border-[#d9e2dc] bg-white p-5 shadow-sm shadow-slate-200/60"
@@ -331,7 +272,7 @@ export function DashboardShell({ userEmail, userName, workspaceSlug }: Dashboard
                     </tr>
                   </thead>
                   <tbody>
-                    {pipeline.map((deal) => (
+                    {data.pipeline.map((deal) => (
                       <tr key={deal.company} className="border-t border-[#edf0ee]">
                         <td className="px-5 py-4 font-black text-[#10231b]">{deal.company}</td>
                         <td className="px-5 py-4 font-medium text-[#536258]">{deal.contact}</td>
@@ -353,7 +294,7 @@ export function DashboardShell({ userEmail, userName, workspaceSlug }: Dashboard
               <article className="rounded-lg border border-[#d9e2dc] bg-white p-5 shadow-sm">
                 <h2 className="text-xl font-black text-[#10231b]">Tasks</h2>
                 <div className="mt-4 divide-y divide-[#edf0ee]">
-                  {tasks.map((task) => (
+                  {data.tasks.map((task) => (
                     <div key={task.title} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex items-start justify-between gap-4">
                         <p className="min-w-0 font-black text-[#10231b]">{task.title}</p>
@@ -374,16 +315,16 @@ export function DashboardShell({ userEmail, userName, workspaceSlug }: Dashboard
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-black text-[#10231b]">Subscription</h2>
-                    <p className="mt-1 text-sm font-medium text-[#66756c]">Growth plan</p>
+                    <p className="mt-1 text-sm font-medium text-[#66756c]">{data.subscription.plan} plan</p>
                   </div>
                   <span className="rounded-lg bg-emerald-50 px-3 py-1 text-sm font-black text-emerald-700">
-                    Active
+                    {data.subscription.status}
                   </span>
                 </div>
                 <div className="mt-6 flex items-end justify-between gap-4">
                   <div>
-                    <p className="text-4xl font-black tracking-tight text-[#10231b]">$29</p>
-                    <p className="mt-1 text-sm font-medium text-[#66756c]">test billing mode</p>
+                    <p className="text-4xl font-black tracking-tight text-[#10231b]">{data.subscription.price}</p>
+                    <p className="mt-1 text-sm font-medium text-[#66756c]">{data.subscription.note}</p>
                   </div>
                   <button className="rounded-lg bg-[#10231b] px-4 py-2.5 text-sm font-black text-white hover:bg-[#1f3a2f]">
                     Manage
