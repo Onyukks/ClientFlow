@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { createCheckoutSessionAction, createCustomerPortalSessionAction } from "@/app/billing/actions";
 import { AppShell } from "@/components/app-shell";
 import { getBillingData } from "@/lib/billing-data";
 import { getDashboardData } from "@/lib/dashboard-data";
@@ -65,6 +66,15 @@ export default async function BillingPage() {
                 >
                   View revenue report
                 </Link>
+                <form action={createCustomerPortalSessionAction} className="mt-3">
+                  <button
+                    className="inline-flex w-full justify-center rounded-lg bg-white/10 px-4 py-3 text-sm font-black text-white hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!billingData.canManageBilling}
+                    type="submit"
+                  >
+                    Manage in Stripe
+                  </button>
+                </form>
               </div>
             </div>
           </article>
@@ -147,16 +157,20 @@ export default async function BillingPage() {
                   </p>
                 ))}
               </div>
-              <button
-                className={`mt-6 w-full rounded-lg px-4 py-3 text-sm font-black ${
-                  plan.highlighted
-                    ? "bg-white text-[#10231b] hover:bg-[#eef4f0]"
-                    : "border border-[#d9e2dc] bg-white text-[#10231b] hover:bg-[#f4f7fb]"
-                }`}
-                type="button"
-              >
-                {plan.cta}
-              </button>
+              <form action={createCheckoutSessionAction} className="mt-6">
+                <input name="plan" type="hidden" value={plan.planKey} />
+                <button
+                  className={`w-full rounded-lg px-4 py-3 text-sm font-black disabled:cursor-not-allowed disabled:opacity-60 ${
+                    plan.highlighted
+                      ? "bg-white text-[#10231b] hover:bg-[#eef4f0]"
+                      : "border border-[#d9e2dc] bg-white text-[#10231b] hover:bg-[#f4f7fb]"
+                  }`}
+                  disabled={!plan.checkoutEnabled}
+                  type="submit"
+                >
+                  {plan.cta}
+                </button>
+              </form>
             </article>
           ))}
         </section>

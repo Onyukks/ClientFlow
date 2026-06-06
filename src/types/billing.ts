@@ -16,11 +16,13 @@ export type BillingUsageItem = {
 };
 
 export type BillingPlanCard = {
+  checkoutEnabled: boolean;
   cta: string;
   description: string;
   features: string[];
   highlighted: boolean;
   name: string;
+  planKey: string;
   price: string;
 };
 
@@ -40,6 +42,7 @@ export type BillingMember = {
 };
 
 export type BillingData = {
+  canManageBilling: boolean;
   currentPlan: string;
   currentPrice: string;
   history: BillingHistoryItem[];
@@ -50,6 +53,7 @@ export type BillingData = {
   renewalDate: string;
   status: string;
   statusColor: string;
+  stripeConfigured: boolean;
   summary: string;
   usage: BillingUsageItem[];
 };

@@ -71,10 +71,19 @@ DEMO_USER_EMAIL="demo@clientflow.app"
 DEMO_USER_PASSWORD="ChangeMe123!"
 STRIPE_SECRET_KEY=""
 STRIPE_WEBHOOK_SECRET=""
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=""
+STRIPE_GROWTH_PRICE_ID=""
+STRIPE_PRO_PRICE_ID=""
 ```
 
-`DATABASE_URL` should use the pooled Neon URL for the running app. `DIRECT_URL` is optional and can use Neon's direct connection string for Prisma migrations when available. Stripe keys stay empty until the billing stage. The app will use Stripe test mode only.
+`DATABASE_URL` should use the pooled Neon URL for the running app. `DIRECT_URL` is optional and can use Neon's direct connection string for Prisma migrations when available. Stripe keys should come from Stripe test mode only.
+
+For local Stripe webhooks, install the Stripe CLI, then run:
+
+```bash
+stripe listen --forward-to localhost:3000/api/stripe/webhook
+```
+
+Copy the webhook signing secret from that command into `STRIPE_WEBHOOK_SECRET`. The Growth and Pro variables should use the recurring Price IDs from the test-mode Stripe products.
 
 ## Scripts
 

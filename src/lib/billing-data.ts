@@ -6,6 +6,7 @@ import {
   TaskStatus,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getStripePriceId, isStripeConfigured } from "@/lib/stripe";
 import type { BillingData, BillingHistoryItem, BillingPlanCard, BillingUsageItem } from "@/types/billing";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -168,6 +169,7 @@ export async function getBillingData(workspaceId: string): Promise<BillingData> 
   const plan = subscription?.plan ?? SubscriptionPlan.FREE;
   const planDetails = planCatalog[plan];
   const status = subscription?.status ?? SubscriptionStatus.TRIALING;
+  const stripeConfigured = isStripeConfigured();
   const renewalDate = subscription?.currentPeriodEnd ?? addDays(new Date(), 14);
   const openDeals = workspace.deals.filter((deal) => deal.stage !== DealStage.WON && deal.stage !== DealStage.LOST);
   const pipelineValue = openDeals.reduce((total, deal) => total + Number(deal.value), 0);
@@ -186,11 +188,13 @@ export async function getBillingData(workspaceId: string): Promise<BillingData> 
     const highlighted = planKey === plan;
 
     return {
-      cta: highlighted ? "Current plan" : `Preview ${catalogPlan.name}`,
+      checkoutEnabled: stripeConfigured && !highlighted && planKey !== SubscriptionPlan.FREE && Boolean(getStripePriceId(planKey)),
+      cta: highlighted ? "Current plan" : `Checkout ${catalogPlan.name}`,
       description: catalogPlan.description,
       features: catalogPlan.features,
       highlighted,
       name: catalogPlan.name,
+      planKey,
       price: `${formatCurrency(catalogPlan.price)}/mo`,
     };
   });
@@ -223,6 +227,7 @@ export async function getBillingData(workspaceId: string): Promise<BillingData> 
   ];
 
   return {
+    canManageBilling: Boolean(subscription?.stripeCustomerId) && stripeConfigured,
     currentPlan: planDetails.name,
     currentPrice: `${formatCurrency(planDetails.price)}/mo`,
     history,
@@ -270,6 +275,7 @@ export async function getBillingData(workspaceId: string): Promise<BillingData> 
     renewalDate: formatDate(renewalDate),
     status: formatEnumLabel(status),
     statusColor: statusStyles[status],
+    stripeConfigured,
     summary: `${workspace.name} is on the ${planDetails.name} plan at ${formatCurrency(
       planDetails.price,
     )}/month with ${daysRemaining} days left in the current demo cycle.`,
