@@ -31,7 +31,7 @@ const navItems: NavItem[] = [
   { label: "Deals", href: "/deals" },
   { label: "Tasks", href: "/tasks" },
   { label: "Reports", href: "/reports" },
-  { label: "Billing" },
+  { label: "Billing", href: "/billing" },
 ];
 
 function SidebarContent({

@@ -215,9 +215,12 @@ export function DashboardShell({ data, userEmail, userName, workspaceSlug }: Das
                   <p className="text-4xl font-black tracking-tight text-[#10231b]">{data.subscription.price}</p>
                   <p className="mt-1 text-sm font-medium text-[#66756c]">{data.subscription.note}</p>
                 </div>
-                <button className="rounded-lg bg-[#10231b] px-4 py-2.5 text-sm font-black text-white hover:bg-[#1f3a2f]">
+                <Link
+                  className="rounded-lg bg-[#10231b] px-4 py-2.5 text-sm font-black text-white hover:bg-[#1f3a2f]"
+                  href="/billing"
+                >
                   Manage
-                </button>
+                </Link>
               </div>
             </article>
           </div>
