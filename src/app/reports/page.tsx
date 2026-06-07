@@ -32,7 +32,7 @@ export default async function ReportsPage() {
             <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div className="min-w-0">
                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#9fb5aa]">Performance reports</p>
-                <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">{reportsData.headline}</h2>
+                <h2 className="mt-3 text-2xl font-black leading-tight sm:text-3xl">{reportsData.headline}</h2>
                 <HeroStatGrid
                   stats={reportsData.metrics.slice(0, 3).map((metric) => ({
                     accentClassName: "border-blue-400",

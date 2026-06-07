@@ -227,9 +227,9 @@ export async function getReportsData(workspaceId: string): Promise<ReportsData> 
   return {
     activity,
     forecastBars,
-    headline: `Pipeline report covering ${clients.length} accounts, ${formatCurrency(
-      pipelineValue,
-    )} in open value, and ${formatCompactCurrency(weightedForecast)} weighted forecast.`,
+    headline: `${clients.length} accounts, ${formatCompactCurrency(pipelineValue)} open, ${formatCompactCurrency(
+      weightedForecast,
+    )} forecast.`,
     healthSegments,
     metrics: [
       {
