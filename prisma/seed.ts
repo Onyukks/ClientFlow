@@ -67,7 +67,7 @@ async function main() {
       },
       subscription: {
         create: {
-          plan: SubscriptionPlan.GROWTH,
+          plan: SubscriptionPlan.FREE,
           status: SubscriptionStatus.ACTIVE,
           currentPeriodEnd: addDays(30),
         },
