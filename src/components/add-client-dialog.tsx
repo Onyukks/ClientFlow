@@ -3,6 +3,7 @@
 import { Building2, Loader2, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useId, useState } from "react";
+import { createPortal } from "react-dom";
 import { createClientAction, type CreateClientField, type CreateClientFormState } from "@/app/actions";
 
 const initialState: CreateClientFormState = {
@@ -198,6 +199,7 @@ export function AddClientDialog({ label = "Add client" }: { label?: string }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const titleId = useId();
+  const portalRoot = typeof document === "undefined" ? null : document.body;
 
   const closeDialog = useCallback(() => {
     setOpen(false);
@@ -224,6 +226,48 @@ export function AddClientDialog({ label = "Add client" }: { label?: string }) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [open]);
 
+  const dialog = open ? (
+    <div className="fixed inset-0 z-[100] overflow-y-auto px-4 py-6 sm:py-8">
+      <button
+        aria-label="Close add client dialog"
+        className="fixed inset-0 bg-[#07130e]/60 backdrop-blur-sm"
+        onClick={closeDialog}
+        type="button"
+      />
+
+      <section
+        aria-labelledby={titleId}
+        aria-modal="true"
+        className="relative z-10 mx-auto w-full max-w-3xl rounded-lg border border-[#d9e2dc] bg-white p-5 shadow-2xl sm:p-6"
+        role="dialog"
+      >
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div className="flex min-w-0 gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#10231b] text-white">
+              <Building2 aria-hidden="true" size={20} strokeWidth={2.5} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#66756c]">New account</p>
+              <h2 className="mt-1 text-2xl font-black tracking-tight text-[#10231b]" id={titleId}>
+                Add client
+              </h2>
+            </div>
+          </div>
+          <button
+            aria-label="Close add client dialog"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#d9e2dc] bg-white text-[#10231b] hover:bg-[#f4f7fb]"
+            onClick={closeDialog}
+            type="button"
+          >
+            <X aria-hidden="true" size={19} strokeWidth={2.5} />
+          </button>
+        </div>
+
+        <AddClientForm onCancel={closeDialog} onSuccess={handleSuccess} />
+      </section>
+    </div>
+  ) : null;
+
   return (
     <>
       <button
@@ -235,47 +279,7 @@ export function AddClientDialog({ label = "Add client" }: { label?: string }) {
         <span>{label}</span>
       </button>
 
-      {open ? (
-        <div className="fixed inset-0 z-[60] overflow-y-auto px-4 py-6 sm:py-8">
-          <button
-            aria-label="Close add client dialog"
-            className="fixed inset-0 bg-[#07130e]/60 backdrop-blur-sm"
-            onClick={closeDialog}
-            type="button"
-          />
-
-          <section
-            aria-labelledby={titleId}
-            aria-modal="true"
-            className="relative z-10 mx-auto w-full max-w-3xl rounded-lg border border-[#d9e2dc] bg-white p-5 shadow-2xl sm:p-6"
-            role="dialog"
-          >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div className="flex min-w-0 gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#10231b] text-white">
-                  <Building2 aria-hidden="true" size={20} strokeWidth={2.5} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#66756c]">New account</p>
-                  <h2 className="mt-1 text-2xl font-black tracking-tight text-[#10231b]" id={titleId}>
-                    Add client
-                  </h2>
-                </div>
-              </div>
-              <button
-                aria-label="Close add client dialog"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-[#d9e2dc] bg-white text-[#10231b] hover:bg-[#f4f7fb]"
-                onClick={closeDialog}
-                type="button"
-              >
-                <X aria-hidden="true" size={19} strokeWidth={2.5} />
-              </button>
-            </div>
-
-            <AddClientForm onCancel={closeDialog} onSuccess={handleSuccess} />
-          </section>
-        </div>
-      ) : null}
+      {portalRoot && dialog ? createPortal(dialog, portalRoot) : null}
     </>
   );
 }
