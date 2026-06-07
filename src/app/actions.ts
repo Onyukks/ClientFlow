@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { ActivityType, ClientStatus, DealStage, TaskPriority, TaskStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +17,11 @@ export type ClientFormState = {
 export type CreateClientField = ClientFormField;
 export type CreateClientFormState = ClientFormState;
 export type UpdateClientFormState = ClientFormState;
+
+export type DeleteClientFormState = {
+  message: string;
+  status: "error" | "idle";
+};
 
 export type DealFormField = "clientId" | "expectedCloseDate" | "probability" | "stage" | "title" | "value";
 
@@ -254,6 +260,19 @@ const revalidateDealPaths = (...clientIds: string[]) => {
   }
 };
 
+const revalidateClientPaths = (...clientIds: string[]) => {
+  revalidatePath("/dashboard");
+  revalidatePath("/clients");
+  revalidatePath("/deals");
+  revalidatePath("/tasks");
+  revalidatePath("/reports");
+  revalidatePath("/billing");
+
+  for (const clientId of new Set(clientIds.filter(Boolean))) {
+    revalidatePath(`/clients/${clientId}`);
+  }
+};
+
 const revalidateTaskPaths = (...clientIds: string[]) => {
   revalidatePath("/dashboard");
   revalidatePath("/clients");
@@ -422,8 +441,7 @@ export async function createClientAction(
     };
   }
 
-  revalidatePath("/clients");
-  revalidatePath("/dashboard");
+  revalidateClientPaths();
 
   return {
     message: `${payload.name} has been added.`,
@@ -566,14 +584,81 @@ export async function updateClientAction(
     };
   }
 
-  revalidatePath("/clients");
-  revalidatePath(`/clients/${client.id}`);
-  revalidatePath("/dashboard");
+  revalidateClientPaths(client.id);
 
   return {
     message: `${payload.name} has been updated.`,
     status: "success",
   };
+}
+
+export async function deleteClientAction(
+  _previousState: DeleteClientFormState,
+  formData: FormData,
+): Promise<DeleteClientFormState> {
+  const session = await auth();
+
+  if (!session?.user?.id || !session.user.workspaceId) {
+    return {
+      message: "Sign in again before deleting this client.",
+      status: "error",
+    };
+  }
+
+  const clientId = readField(formData, "clientId");
+
+  if (!clientId) {
+    return {
+      message: "Client id is missing.",
+      status: "error",
+    };
+  }
+
+  const client = await prisma.client.findFirst({
+    select: {
+      id: true,
+      name: true,
+    },
+    where: {
+      id: clientId,
+      workspaceId: session.user.workspaceId,
+    },
+  });
+
+  if (!client) {
+    return {
+      message: "Client was not found.",
+      status: "error",
+    };
+  }
+
+  try {
+    await prisma.$transaction(async (transaction) => {
+      await transaction.activity.create({
+        data: {
+          actorId: session.user.id,
+          clientId: client.id,
+          message: `${client.name} was removed from the client portfolio.`,
+          type: ActivityType.NOTE,
+          workspaceId: session.user.workspaceId,
+        },
+      });
+
+      await transaction.client.delete({
+        where: {
+          id: client.id,
+        },
+      });
+    });
+  } catch {
+    return {
+      message: "Could not delete the client. Try again.",
+      status: "error",
+    };
+  }
+
+  revalidateClientPaths(client.id);
+  redirect("/clients");
 }
 
 export async function createDealAction(

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { DeleteClientDialog } from "@/components/delete-client-dialog";
 import { EditClientDialog } from "@/components/edit-client-dialog";
 import { getClientDetailsData } from "@/lib/clients-data";
 import { getDashboardData } from "@/lib/dashboard-data";
@@ -48,7 +49,15 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
             <ArrowLeft aria-hidden="true" size={17} strokeWidth={2.6} />
             <span>Clients</span>
           </Link>
-          <EditClientDialog initialValues={client.editValues} />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <EditClientDialog initialValues={client.editValues} />
+            <DeleteClientDialog
+              clientId={client.id}
+              clientName={client.name}
+              dealCount={client.deals.length}
+              taskCount={client.tasks.length}
+            />
+          </div>
         </div>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
