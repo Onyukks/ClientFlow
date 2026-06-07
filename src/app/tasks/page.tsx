@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { HeroStatGrid } from "@/components/hero-stat-grid";
 import { AddTaskDialog, EditTaskDialog } from "@/components/task-dialogs";
 import { getDashboardData } from "@/lib/dashboard-data";
 import { getTasksData } from "@/lib/tasks-data";
@@ -48,14 +49,13 @@ export default async function TasksPage() {
                 <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
                   {tasksData.tasks.length} follow-ups keeping revenue work on track.
                 </h2>
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  {tasksData.metrics.slice(0, 3).map((metric) => (
-                    <div className="border-l-2 border-amber-400 pl-4" key={metric.label}>
-                      <p className="text-2xl font-black">{metric.value}</p>
-                      <p className="text-sm text-[#c8d8d0]">{metric.label}</p>
-                    </div>
-                  ))}
-                </div>
+                <HeroStatGrid
+                  stats={tasksData.metrics.slice(0, 3).map((metric) => ({
+                    accentClassName: "border-amber-400",
+                    label: metric.label,
+                    value: metric.value,
+                  }))}
+                />
               </div>
 
               <div className="min-w-0 border-t border-white/10 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">

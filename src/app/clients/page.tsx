@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { HeroStatGrid } from "@/components/hero-stat-grid";
 import { getClientsData } from "@/lib/clients-data";
 import { getDashboardData } from "@/lib/dashboard-data";
 
@@ -39,20 +40,25 @@ export default async function ClientsPage() {
                 <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
                   {clientsData.clients.length} client accounts under active coverage.
                 </h2>
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  <div className="border-l-2 border-emerald-400 pl-4">
-                    <p className="text-2xl font-black">{activeClients}</p>
-                    <p className="text-sm text-[#c8d8d0]">Active</p>
-                  </div>
-                  <div className="border-l-2 border-blue-400 pl-4">
-                    <p className="text-2xl font-black">{prospectClients}</p>
-                    <p className="text-sm text-[#c8d8d0]">Prospects</p>
-                  </div>
-                  <div className="border-l-2 border-rose-400 pl-4">
-                    <p className="text-2xl font-black">{atRiskClients}</p>
-                    <p className="text-sm text-[#c8d8d0]">At risk</p>
-                  </div>
-                </div>
+                <HeroStatGrid
+                  stats={[
+                    {
+                      accentClassName: "border-emerald-400",
+                      label: "Active",
+                      value: activeClients,
+                    },
+                    {
+                      accentClassName: "border-blue-400",
+                      label: "Prospects",
+                      value: prospectClients,
+                    },
+                    {
+                      accentClassName: "border-rose-400",
+                      label: "At risk",
+                      value: atRiskClients,
+                    },
+                  ]}
+                />
               </div>
 
               <div className="min-w-0 border-t border-white/10 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">

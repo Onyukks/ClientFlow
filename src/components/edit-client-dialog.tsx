@@ -262,10 +262,10 @@ export function EditClientDialog({ initialValues }: { initialValues: ClientEditV
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-5">
+        <div className="fixed inset-0 z-[60] overflow-y-auto px-4 py-6 sm:py-8">
           <button
             aria-label="Close edit client dialog"
-            className="absolute inset-0 bg-[#07130e]/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-[#07130e]/60 backdrop-blur-sm"
             onClick={closeDialog}
             type="button"
           />
@@ -273,7 +273,7 @@ export function EditClientDialog({ initialValues }: { initialValues: ClientEditV
           <section
             aria-labelledby={titleId}
             aria-modal="true"
-            className="relative z-10 max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-lg border border-[#d9e2dc] bg-white p-5 shadow-2xl sm:p-6"
+            className="relative z-10 mx-auto w-full max-w-3xl rounded-lg border border-[#d9e2dc] bg-white p-5 shadow-2xl sm:p-6"
             role="dialog"
           >
             <div className="mb-6 flex items-start justify-between gap-4">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
+import { HeroStatGrid } from "@/components/hero-stat-grid";
 import { getDashboardData } from "@/lib/dashboard-data";
 import { getReportsData } from "@/lib/reports-data";
 
@@ -32,14 +33,13 @@ export default async function ReportsPage() {
               <div className="min-w-0">
                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#9fb5aa]">Performance reports</p>
                 <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">{reportsData.headline}</h2>
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  {reportsData.metrics.slice(0, 3).map((metric) => (
-                    <div className="border-l-2 border-blue-400 pl-4" key={metric.label}>
-                      <p className="text-2xl font-black">{metric.value}</p>
-                      <p className="text-sm text-[#c8d8d0]">{metric.label}</p>
-                    </div>
-                  ))}
-                </div>
+                <HeroStatGrid
+                  stats={reportsData.metrics.slice(0, 3).map((metric) => ({
+                    accentClassName: "border-blue-400",
+                    label: metric.label,
+                    value: metric.value,
+                  }))}
+                />
               </div>
 
               <div className="min-w-0 border-t border-white/10 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">

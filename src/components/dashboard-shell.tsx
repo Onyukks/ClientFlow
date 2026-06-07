@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
+import { HeroStatGrid } from "@/components/hero-stat-grid";
 import type { DashboardData } from "@/types/dashboard";
 
 type DashboardShellProps = {
@@ -28,20 +29,25 @@ export function DashboardShell({ data, userEmail, userName, workspaceSlug }: Das
                 <h2 className="mt-3 max-w-3xl text-3xl font-black tracking-tight sm:text-4xl">
                   {data.summary.revenueHeadline}
                 </h2>
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  <div className="border-l-2 border-emerald-400 pl-4">
-                    <p className="text-2xl font-black">{data.summary.expectedCloseValue}</p>
-                    <p className="text-sm text-[#c8d8d0]">Expected close</p>
-                  </div>
-                  <div className="border-l-2 border-blue-400 pl-4">
-                    <p className="text-2xl font-black">{data.summary.hotAccounts}</p>
-                    <p className="text-sm text-[#c8d8d0]">Hot accounts</p>
-                  </div>
-                  <div className="border-l-2 border-amber-400 pl-4">
-                    <p className="text-2xl font-black">{data.summary.dueToday}</p>
-                    <p className="text-sm text-[#c8d8d0]">Due today</p>
-                  </div>
-                </div>
+                <HeroStatGrid
+                  stats={[
+                    {
+                      accentClassName: "border-emerald-400",
+                      label: "Expected close",
+                      value: data.summary.expectedCloseValue,
+                    },
+                    {
+                      accentClassName: "border-blue-400",
+                      label: "Hot accounts",
+                      value: data.summary.hotAccounts,
+                    },
+                    {
+                      accentClassName: "border-amber-400",
+                      label: "Due today",
+                      value: data.summary.dueToday,
+                    },
+                  ]}
+                />
               </div>
 
               <div className="min-w-0 border-t border-white/10 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
@@ -62,7 +68,7 @@ export function DashboardShell({ data, userEmail, userName, workspaceSlug }: Das
                 </div>
                 <div className="mt-6 grid grid-cols-7 items-end gap-2">
                   {data.summary.chartBars.map((height, index) => (
-                    <div key={height + index} className="flex h-28 items-end rounded-lg bg-white/5 px-1.5">
+                    <div key={`chart-bar-${index}`} className="flex h-28 items-end rounded-lg bg-white/5 px-1.5">
                       <div
                         className={`w-full rounded-md ${
                           index % 3 === 0 ? "bg-blue-400" : index % 3 === 1 ? "bg-emerald-400" : "bg-amber-400"
@@ -78,20 +84,20 @@ export function DashboardShell({ data, userEmail, userName, workspaceSlug }: Das
 
           <article className="rounded-lg border border-[#d9e2dc] bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <h2 className="text-lg font-black text-[#10231b]">Today&apos;s focus</h2>
                 <p className="text-sm font-medium text-[#66756c]">
                   {userName} - {workspaceSlug}
                 </p>
               </div>
-              <span className="rounded-lg bg-rose-50 px-3 py-1 text-sm font-black text-rose-700">
+              <span className="shrink-0 whitespace-nowrap rounded-lg bg-rose-50 px-3 py-1 text-sm font-black text-rose-700">
                 {data.summary.alertCount} alerts
               </span>
             </div>
 
             <div className="mt-5 space-y-4">
               {data.activity.map((item, index) => (
-                <div key={item.message} className="flex gap-3">
+                <div key={`${item.message}-${index}`} className="flex gap-3">
                   <span className="mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[#edf7f1] text-xs font-black text-emerald-700">
                     {index + 1}
                   </span>

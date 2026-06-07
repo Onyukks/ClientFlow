@@ -89,7 +89,7 @@ export default async function Home() {
                 </div>
                 <div className="mt-6 grid grid-cols-7 items-end gap-2">
                   {[48, 62, 40, 76, 58, 88, 70].map((height, index) => (
-                    <div key={height + index} className="flex h-28 items-end rounded-lg bg-[#f4f7fb] px-1.5">
+                    <div key={`preview-chart-bar-${index}`} className="flex h-28 items-end rounded-lg bg-[#f4f7fb] px-1.5">
                       <div
                         className={`w-full rounded-md ${
                           index % 3 === 0 ? "bg-blue-500" : index % 3 === 1 ? "bg-emerald-500" : "bg-amber-400"

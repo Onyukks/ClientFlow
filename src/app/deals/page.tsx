@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/components/app-shell";
 import { AddDealDialog, EditDealDialog } from "@/components/deal-dialogs";
+import { HeroStatGrid } from "@/components/hero-stat-grid";
 import { getDashboardData } from "@/lib/dashboard-data";
 import { getDealsData } from "@/lib/deals-data";
 
@@ -43,14 +44,13 @@ export default async function DealsPage() {
                 <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
                   {dealsData.deals.length} opportunities tracked across active accounts.
                 </h2>
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  {dealsData.metrics.slice(0, 3).map((metric) => (
-                    <div className="border-l-2 border-emerald-400 pl-4" key={metric.label}>
-                      <p className="text-2xl font-black">{metric.value}</p>
-                      <p className="text-sm text-[#c8d8d0]">{metric.label}</p>
-                    </div>
-                  ))}
-                </div>
+                <HeroStatGrid
+                  stats={dealsData.metrics.slice(0, 3).map((metric) => ({
+                    accentClassName: "border-emerald-400",
+                    label: metric.label,
+                    value: metric.value,
+                  }))}
+                />
               </div>
 
               <div className="min-w-0 border-t border-white/10 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">

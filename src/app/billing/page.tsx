@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { createCheckoutSessionAction, createCustomerPortalSessionAction } from "@/app/billing/actions";
 import { AppShell } from "@/components/app-shell";
+import { HeroStatGrid } from "@/components/hero-stat-grid";
 import { getBillingData } from "@/lib/billing-data";
 import { getDashboardData } from "@/lib/dashboard-data";
 
@@ -33,20 +34,25 @@ export default async function BillingPage() {
               <div className="min-w-0">
                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-[#9fb5aa]">Subscription</p>
                 <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">{billingData.summary}</h2>
-                <div className="mt-6 grid gap-4 sm:grid-cols-3">
-                  <div className="border-l-2 border-emerald-400 pl-4">
-                    <p className="text-2xl font-black">{billingData.currentPlan}</p>
-                    <p className="text-sm text-[#c8d8d0]">Current plan</p>
-                  </div>
-                  <div className="border-l-2 border-blue-400 pl-4">
-                    <p className="text-2xl font-black">{billingData.currentPrice}</p>
-                    <p className="text-sm text-[#c8d8d0]">Monthly price</p>
-                  </div>
-                  <div className="border-l-2 border-amber-400 pl-4">
-                    <p className="text-2xl font-black">{billingData.renewalDate}</p>
-                    <p className="text-sm text-[#c8d8d0]">Renewal date</p>
-                  </div>
-                </div>
+                <HeroStatGrid
+                  stats={[
+                    {
+                      accentClassName: "border-emerald-400",
+                      label: "Current plan",
+                      value: billingData.currentPlan,
+                    },
+                    {
+                      accentClassName: "border-blue-400",
+                      label: "Monthly price",
+                      value: billingData.currentPrice,
+                    },
+                    {
+                      accentClassName: "border-amber-400",
+                      label: "Renewal date",
+                      value: billingData.renewalDate,
+                    },
+                  ]}
+                />
               </div>
 
               <div className="min-w-0 border-t border-white/10 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
