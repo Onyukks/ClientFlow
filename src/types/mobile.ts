@@ -121,6 +121,55 @@ export type MobileDashboard = {
   } | null;
 };
 
+export type MobileReports = {
+  headline: { accounts: number; openPipeline: number; weightedForecast: number };
+  metrics: {
+    openPipeline: number;
+    openDeals: number;
+    weightedForecast: number;
+    activeRate: number;
+    nextThirtyDayValue: number;
+    dueSoonTasks: number;
+    portfolioValue: number;
+    taskCompletionRate: number;
+    atRiskClients: number;
+  };
+  stages: {
+    stage: DealStage;
+    count: number;
+    totalValue: number;
+    weightedValue: number;
+    averageProbability: number;
+  }[];
+  clientHealth: { status: ClientStatus; count: number }[];
+  taskBreakdown: { status: TaskStatus; count: number }[];
+};
+
+export type MobileBillingPlan = {
+  key: SubscriptionPlan;
+  name: string;
+  price: number;
+  description: string;
+  features: string[];
+  current: boolean;
+};
+
+export type MobileBilling = {
+  plan: SubscriptionPlan;
+  planName: string;
+  price: number;
+  status: SubscriptionStatus;
+  renewalDate: string;
+  daysRemaining: number;
+  pipelineValue: number;
+  paymentMode: string;
+  stripeConfigured: boolean;
+  usage: { label: string; value: number; limit: number; percent: number }[];
+  plans: MobileBillingPlan[];
+  members: { name: string; email: string; role: string }[];
+  history: { id: string; label: string; amount: number; date: string; status: string }[];
+};
+
 export type MobileApiError = {
   error: {
     message: string;

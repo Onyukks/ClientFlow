@@ -1,10 +1,26 @@
 import { getApiSession } from "@/lib/api/auth";
 import { badRequest, fromResult, readJson, serverError, unauthorized } from "@/lib/api/http";
-import { updateTask } from "@/lib/api/service";
+import { deleteTask, updateTask } from "@/lib/api/service";
 
 export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ taskId: string }> };
+
+export async function DELETE(request: Request, { params }: Context) {
+  const session = await getApiSession(request);
+
+  if (!session) {
+    return unauthorized();
+  }
+
+  const { taskId } = await params;
+
+  try {
+    return fromResult(await deleteTask(session, taskId));
+  } catch {
+    return serverError();
+  }
+}
 
 export async function PATCH(request: Request, { params }: Context) {
   const session = await getApiSession(request);

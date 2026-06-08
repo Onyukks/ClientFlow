@@ -2,10 +2,14 @@ import {
   ActivityType,
   ClientStatus,
   DealStage,
+  MemberRole,
+  SubscriptionPlan,
+  SubscriptionStatus,
   TaskPriority,
   TaskStatus,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { isStripeConfigured } from "@/lib/stripe";
 import {
   isOpenStage,
   serializeActivity,
@@ -16,10 +20,12 @@ import {
 } from "@/lib/api/serializers";
 import type { MobileSession } from "@/lib/api/auth";
 import type {
+  MobileBilling,
   MobileClientDetail,
   MobileClientSummary,
   MobileDashboard,
   MobileDealSummary,
+  MobileReports,
   MobileTaskSummary,
 } from "@/types/mobile";
 
@@ -756,4 +762,228 @@ export async function updateTask(
   });
 
   return { ok: true, data: serializeTask(task) };
+}
+
+export async function deleteDeal(session: MobileSession, dealId: string): Promise<ServiceResult<{ id: string }>> {
+  const existing = await prisma.deal.findFirst({
+    where: { id: dealId, workspaceId: session.workspaceId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return fail(404, "Deal was not found.");
+  }
+
+  await prisma.deal.delete({ where: { id: dealId } });
+  return { ok: true, data: { id: dealId } };
+}
+
+export async function deleteTask(session: MobileSession, taskId: string): Promise<ServiceResult<{ id: string }>> {
+  const existing = await prisma.task.findFirst({
+    where: { id: taskId, workspaceId: session.workspaceId },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return fail(404, "Task was not found.");
+  }
+
+  await prisma.task.delete({ where: { id: taskId } });
+  return { ok: true, data: { id: taskId } };
+}
+
+const OPEN_STAGE_LIST = [DealStage.QUALIFIED, DealStage.DISCOVERY, DealStage.PROPOSAL, DealStage.NEGOTIATION] as const;
+
+export async function getReports(workspaceId: string): Promise<MobileReports | null> {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const in30 = new Date(todayStart);
+  in30.setDate(in30.getDate() + 30);
+  const in7 = new Date(todayStart);
+  in7.setDate(in7.getDate() + 7);
+
+  const [clients, deals, tasks] = await Promise.all([
+    prisma.client.findMany({ where: { workspaceId }, select: { estimatedValue: true, status: true } }),
+    prisma.deal.findMany({
+      where: { workspaceId },
+      select: { expectedCloseDate: true, probability: true, stage: true, value: true },
+    }),
+    prisma.task.findMany({ where: { workspaceId }, select: { dueDate: true, status: true } }),
+  ]);
+
+  const openDeals = deals.filter((deal) => isOpenStage(deal.stage));
+  const openPipeline = openDeals.reduce((total, deal) => total + Number(deal.value ?? 0), 0);
+  const weightedForecast = openDeals.reduce((t, deal) => t + Number(deal.value ?? 0) * (deal.probability / 100), 0);
+  const nextThirtyDayValue = openDeals
+    .filter((d) => d.expectedCloseDate && d.expectedCloseDate >= todayStart && d.expectedCloseDate <= in30)
+    .reduce((total, deal) => total + Number(deal.value ?? 0), 0);
+  const activeClients = clients.filter((c) => c.status === ClientStatus.ACTIVE).length;
+  const atRiskClients = clients.filter((c) => c.status === ClientStatus.AT_RISK).length;
+  const portfolioValue = clients.reduce((total, c) => total + Number(c.estimatedValue ?? 0), 0);
+  const openTasks = tasks.filter((t) => t.status !== TaskStatus.DONE);
+  const dueSoonTasks = openTasks.filter((t) => t.dueDate && t.dueDate >= todayStart && t.dueDate <= in7).length;
+  const activeRate = clients.length ? Math.round((activeClients / clients.length) * 100) : 0;
+  const taskCompletionRate = tasks.length
+    ? Math.round((tasks.filter((t) => t.status === TaskStatus.DONE).length / tasks.length) * 100)
+    : 0;
+
+  const stages = OPEN_STAGE_LIST.map((stage) => {
+    const stageDeals = openDeals.filter((deal) => deal.stage === stage);
+    const totalValue = stageDeals.reduce((total, deal) => total + Number(deal.value ?? 0), 0);
+    const weightedValue = stageDeals.reduce((t, deal) => t + Number(deal.value ?? 0) * (deal.probability / 100), 0);
+    const averageProbability = stageDeals.length
+      ? Math.round(stageDeals.reduce((t, deal) => t + deal.probability, 0) / stageDeals.length)
+      : 0;
+    return { stage, count: stageDeals.length, totalValue, weightedValue: Math.round(weightedValue), averageProbability };
+  });
+
+  const clientHealth = [ClientStatus.ACTIVE, ClientStatus.PROSPECT, ClientStatus.AT_RISK, ClientStatus.INACTIVE].map(
+    (status) => ({ status, count: clients.filter((c) => c.status === status).length }),
+  );
+
+  const taskBreakdown = [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.DONE].map((status) => ({
+    status,
+    count: tasks.filter((t) => t.status === status).length,
+  }));
+
+  return {
+    headline: { accounts: clients.length, openPipeline, weightedForecast: Math.round(weightedForecast) },
+    metrics: {
+      openPipeline,
+      openDeals: openDeals.length,
+      weightedForecast: Math.round(weightedForecast),
+      activeRate,
+      nextThirtyDayValue,
+      dueSoonTasks,
+      portfolioValue,
+      taskCompletionRate,
+      atRiskClients,
+    },
+    stages,
+    clientHealth,
+    taskBreakdown,
+  };
+}
+
+const PLAN_CATALOG: Record<
+  SubscriptionPlan,
+  { name: string; price: number; description: string; features: string[]; limits: Record<string, number> }
+> = {
+  [SubscriptionPlan.FREE]: {
+    name: "Free",
+    price: 0,
+    description: "A lightweight workspace for early CRM experiments.",
+    features: ["10 client accounts", "5 active opportunities", "Basic task tracking"],
+    limits: { clients: 10, deals: 5, members: 1, tasks: 20 },
+  },
+  [SubscriptionPlan.GROWTH]: {
+    name: "Growth",
+    price: 29,
+    description: "The portfolio demo plan for a growing sales workspace.",
+    features: ["100 client accounts", "50 active opportunities", "Team workspace", "Reports dashboard"],
+    limits: { clients: 100, deals: 50, members: 5, tasks: 150 },
+  },
+  [SubscriptionPlan.PRO]: {
+    name: "Pro",
+    price: 79,
+    description: "Advanced controls for larger teams and deeper reporting.",
+    features: ["Unlimited client accounts", "Advanced analytics", "Priority support", "Custom billing flows"],
+    limits: { clients: 500, deals: 250, members: 25, tasks: 1000 },
+  },
+};
+
+const ROLE_LABELS: Record<MemberRole, string> = {
+  [MemberRole.OWNER]: "Owner",
+  [MemberRole.ADMIN]: "Admin",
+  [MemberRole.MEMBER]: "Member",
+};
+
+const usagePercent = (value: number, limit: number) => Math.min(100, Math.max(6, Math.round((value / limit) * 100)));
+
+export async function getBilling(workspaceId: string): Promise<MobileBilling | null> {
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    include: {
+      clients: { select: { id: true } },
+      deals: { select: { stage: true, value: true } },
+      tasks: { select: { status: true } },
+      memberships: { include: { user: { select: { email: true, name: true } } }, orderBy: { createdAt: "asc" } },
+      subscription: true,
+    },
+  });
+
+  if (!workspace) {
+    return null;
+  }
+
+  const plan = workspace.subscription?.plan ?? SubscriptionPlan.FREE;
+  const status = workspace.subscription?.status ?? SubscriptionStatus.TRIALING;
+  const details = PLAN_CATALOG[plan];
+  const renewal = workspace.subscription?.currentPeriodEnd ?? new Date(Date.now() + 14 * 86_400_000);
+  const daysRemaining = Math.max(0, Math.ceil((renewal.getTime() - Date.now()) / 86_400_000));
+  const openDeals = workspace.deals.filter((deal) => isOpenStage(deal.stage));
+  const pipelineValue = openDeals.reduce((total, deal) => total + Number(deal.value ?? 0), 0);
+  const openTasks = workspace.tasks.filter((t) => t.status !== TaskStatus.DONE);
+
+  const usage = [
+    { label: "Client accounts", value: workspace.clients.length, limit: details.limits.clients },
+    { label: "Open deals", value: openDeals.length, limit: details.limits.deals },
+    { label: "Team seats", value: workspace.memberships.length, limit: details.limits.members },
+    { label: "Open tasks", value: openTasks.length, limit: details.limits.tasks },
+  ].map((item) => ({ ...item, percent: usagePercent(item.value, item.limit) }));
+
+  const plans = Object.values(SubscriptionPlan).map((key) => ({
+    key,
+    name: PLAN_CATALOG[key].name,
+    price: PLAN_CATALOG[key].price,
+    description: PLAN_CATALOG[key].description,
+    features: PLAN_CATALOG[key].features,
+    current: key === plan,
+  }));
+
+  const history = [
+    {
+      id: "INV-DEMO-003",
+      label: `${details.name} plan · current cycle`,
+      amount: details.price,
+      date: new Date(renewal.getTime() - 30 * 86_400_000).toISOString(),
+      status: "Paid",
+    },
+    {
+      id: "INV-DEMO-002",
+      label: "Portfolio billing test credit",
+      amount: 0,
+      date: new Date(renewal.getTime() - 60 * 86_400_000).toISOString(),
+      status: "Demo",
+    },
+    {
+      id: "INV-DEMO-001",
+      label: "Workspace setup preview",
+      amount: 0,
+      date: new Date(renewal.getTime() - 90 * 86_400_000).toISOString(),
+      status: "Demo",
+    },
+  ];
+
+  return {
+    plan,
+    planName: details.name,
+    price: details.price,
+    status,
+    renewalDate: renewal.toISOString(),
+    daysRemaining,
+    pipelineValue,
+    paymentMode: workspace.subscription?.stripeCustomerId
+      ? "Stripe test customer connected"
+      : "Stripe test mode preview",
+    stripeConfigured: isStripeConfigured(),
+    usage,
+    plans,
+    members: workspace.memberships.map((m) => ({
+      name: m.user.name,
+      email: m.user.email,
+      role: ROLE_LABELS[m.role],
+    })),
+    history,
+  };
 }
