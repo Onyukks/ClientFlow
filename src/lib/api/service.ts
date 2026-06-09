@@ -9,7 +9,7 @@ import {
   TaskStatus,
 } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { isStripeConfigured } from "@/lib/stripe";
+import { appUrl, getStripePriceId, isStripeConfigured, stripe } from "@/lib/stripe";
 import {
   isOpenStage,
   serializeActivity,
@@ -899,6 +899,83 @@ const ROLE_LABELS: Record<MemberRole, string> = {
 };
 
 const usagePercent = (value: number, limit: number) => Math.min(100, Math.max(6, Math.round((value / limit) * 100)));
+
+// Creates a Stripe Checkout session and returns its hosted URL for the mobile
+// app to open in a browser. Mirrors the web createCheckoutSessionAction.
+export async function createCheckoutSession(
+  session: MobileSession,
+  plan: string,
+): Promise<ServiceResult<{ url: string }>> {
+  if (plan !== SubscriptionPlan.GROWTH && plan !== SubscriptionPlan.PRO) {
+    return fail(400, "Choose the Growth or Pro plan.");
+  }
+
+  if (!isStripeConfigured()) {
+    return fail(400, "Billing checkout is not configured in this environment.");
+  }
+
+  const priceId = getStripePriceId(plan as SubscriptionPlan);
+
+  if (!priceId) {
+    return fail(400, "This plan is not available for checkout.");
+  }
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: session.workspaceId },
+    include: {
+      memberships: {
+        include: { user: { select: { email: true, name: true } } },
+        orderBy: { createdAt: "asc" },
+        take: 1,
+      },
+      subscription: true,
+    },
+  });
+
+  if (!workspace) {
+    return fail(404, "Workspace was not found.");
+  }
+
+  const owner = workspace.memberships[0]?.user;
+  let stripeCustomerId = workspace.subscription?.stripeCustomerId ?? null;
+
+  if (!stripeCustomerId) {
+    const customer = await stripe.customers.create({
+      email: owner?.email ?? undefined,
+      name: owner?.name ?? workspace.name,
+      metadata: { workspaceId: workspace.id, workspaceSlug: workspace.slug },
+    });
+    stripeCustomerId = customer.id;
+
+    await prisma.subscription.upsert({
+      where: { workspaceId: workspace.id },
+      create: {
+        plan: workspace.subscription?.plan ?? SubscriptionPlan.FREE,
+        status: workspace.subscription?.status ?? SubscriptionStatus.INCOMPLETE,
+        stripeCustomerId,
+        workspaceId: workspace.id,
+      },
+      update: { stripeCustomerId },
+    });
+  }
+
+  const checkout = await stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: stripeCustomerId,
+    client_reference_id: workspace.id,
+    line_items: [{ price: priceId, quantity: 1 }],
+    metadata: { plan, workspaceId: workspace.id },
+    subscription_data: { metadata: { plan, workspaceId: workspace.id } },
+    success_url: `${appUrl}/billing?checkout=success`,
+    cancel_url: `${appUrl}/billing?checkout=canceled`,
+  });
+
+  if (!checkout.url) {
+    return fail(502, "Could not start checkout. Try again.");
+  }
+
+  return { ok: true, data: { url: checkout.url } };
+}
 
 export async function getBilling(workspaceId: string): Promise<MobileBilling | null> {
   const workspace = await prisma.workspace.findUnique({

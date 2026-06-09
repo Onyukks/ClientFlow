@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node api.js && next dev",
     "prebuild": "prisma generate",
     "build": "next build",
-    "start": "next start",
+    "start": "node api.js && next start",
     "lint": "eslint",
     "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "db:generate": "prisma generate",
